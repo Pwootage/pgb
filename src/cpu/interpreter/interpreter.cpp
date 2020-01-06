@@ -4,6 +4,11 @@ namespace interpreter {
 
 // Template functions won't inline properly sooo macros (much faster)
 
+#define jump(addr) do{\
+  cpu->pc(addr);\
+  cpu->clock(4);\
+} while(0)
+
 #define inc_rr(reg) do {\
   uint16_t r = cpu->reg();\
   cpu->reg(r + 1);\
@@ -43,6 +48,25 @@ namespace interpreter {
   cpu->bc(imm);\
 } while (0)
 
+#define add_hl_rr(reg) do{\
+  uint16_t hl = cpu->hl();\
+  uint16_t r = cpu->reg();\
+  uint32_t add = hl + r;\
+  uint16_t halfAdd = (hl & 0xFFu) + (r & 0xFFu);\
+  \
+  cpu->addSub(false);\
+  cpu->halfCarry(halfAdd > 0xFFu);\
+  cpu->carry(add > 0xFFFFu);\
+  \
+  cpu->hl(add);\
+  cpu->clock(4);\
+} while (0)
+
+#define jr_n() do{\
+  int8_t offset = static_cast<int8_t>(cpu->pcRead8());\
+  jump(cpu->pc() + offset);\
+} while (0)
+
 void op_00(CPU *cpu) {
   // nop
 }
@@ -74,8 +98,7 @@ void op_05(CPU *cpu) {
 
 void op_06(CPU *cpu) {
   // ld b, n
-  uint8_t imm = cpu->pcRead8();
-  cpu->b(imm);
+  cpu->b(cpu->pcRead8());
 }
 
 void op_07(CPU *cpu) {
@@ -98,23 +121,12 @@ void op_08(CPU *cpu) {
 
 void op_09(CPU *cpu) {
   // add hl, bc
-  uint16_t hl = cpu->hl();
-  uint16_t bc = cpu->bc();
-  uint32_t add = hl + bc;
-  uint16_t halfAdd = (hl & 0xFFu) + (bc & 0xFFu);
-
-  cpu->addSub(false);
-  cpu->halfCarry(halfAdd > 0xFFu);
-  cpu->carry(add > 0xFFFFu);
-
-  cpu->hl(add);
-  cpu->clock(4);
+  add_hl_rr(bc);
 }
 
 void op_0a(CPU *cpu) {
   // ld a, (bc)
-  uint8_t value = cpu->read16(cpu->bc());
-  cpu->a(value);
+  cpu->a(cpu->read16(cpu->bc()));
 }
 
 void op_0b(CPU *cpu) {
@@ -133,15 +145,24 @@ void op_0d(CPU *cpu) {
 }
 
 void op_0e(CPU *cpu) {
-  op_00(cpu);
+  // ld c, n
+  cpu->c(cpu->pcRead8());
 }
 
 void op_0f(CPU *cpu) {
-  op_00(cpu);
+  // rrca
+  uint8_t a = cpu->a();
+
+  cpu->zero(false);
+  cpu->addSub(false);
+  cpu->halfCarry(false);
+  cpu->carry((a & 1u) != 0);
+
+  cpu->a(a >> 1u);
 }
 
 void op_10(CPU *cpu) {
-  op_00(cpu);
+  op_00(cpu); // TODO: Stop
 }
 
 void op_11(CPU *cpu) {
@@ -170,23 +191,36 @@ void op_15(CPU *cpu) {
 }
 
 void op_16(CPU *cpu) {
-  op_00(cpu);
+  // ld d, n
+  cpu->d(cpu->pcRead8());
 }
 
 void op_17(CPU *cpu) {
-  op_00(cpu);
+  // rla
+  uint8_t a = cpu->a();
+  uint8_t carry = cpu->carry() ? 1 : 0;
+
+  cpu->zero(false);
+  cpu->addSub(false);
+  cpu->halfCarry(false);
+  cpu->carry((a & 0x80u) != 0);
+
+  cpu->a((a << 1u) | carry);
 }
 
 void op_18(CPU *cpu) {
-  op_00(cpu);
+  // jr r8
+  jr_n();
 }
 
 void op_19(CPU *cpu) {
-  op_00(cpu);
+  // add hl, de
+  add_hl_rr(de);
 }
 
 void op_1a(CPU *cpu) {
-  op_00(cpu);
+  // ld a, (de)
+  cpu->a(cpu->read8(cpu->de()));
 }
 
 void op_1b(CPU *cpu) {
@@ -205,7 +239,8 @@ void op_1d(CPU *cpu) {
 }
 
 void op_1e(CPU *cpu) {
-  op_00(cpu);
+  // ld d, n
+  cpu->d(cpu->pcRead8());
 }
 
 void op_1f(CPU *cpu) {
@@ -244,7 +279,8 @@ void op_25(CPU *cpu) {
 }
 
 void op_26(CPU *cpu) {
-  op_00(cpu);
+  // ld h, n
+  cpu->h(cpu->pcRead8());
 }
 
 void op_27(CPU *cpu) {
@@ -256,11 +292,15 @@ void op_28(CPU *cpu) {
 }
 
 void op_29(CPU *cpu) {
-  op_00(cpu);
+  // add hl, hl
+  add_hl_rr(hl);
 }
 
 void op_2a(CPU *cpu) {
-  op_00(cpu);
+  // ld a, (hl+)
+  // ld a, (hli)
+  cpu->a(cpu->read8(cpu->hl()));
+  cpu->hl(cpu->hl() + 1);
 }
 
 void op_2b(CPU *cpu) {
@@ -279,7 +319,8 @@ void op_2d(CPU *cpu) {
 }
 
 void op_2e(CPU *cpu) {
-  op_00(cpu);
+  // ld l, n
+  cpu->l(cpu->pcRead8());
 }
 
 void op_2f(CPU *cpu) {
@@ -332,7 +373,9 @@ void op_35(CPU *cpu) {
 }
 
 void op_36(CPU *cpu) {
-  op_00(cpu);
+  // ld (hl), n
+  uint8_t imm = cpu->pcRead8();
+  cpu->write8(cpu->hl(), imm);
 }
 
 void op_37(CPU *cpu) {
@@ -344,11 +387,15 @@ void op_38(CPU *cpu) {
 }
 
 void op_39(CPU *cpu) {
-  op_00(cpu);
+  // add hl, sp
+  add_hl_rr(sp);
 }
 
 void op_3a(CPU *cpu) {
-  op_00(cpu);
+  // ld a, (hl-)
+  // ld a, (hld)
+  cpu->a(cpu->read8(cpu->hl()));
+  cpu->hl(cpu->hl() - 1);
 }
 
 void op_3b(CPU *cpu) {
@@ -367,7 +414,8 @@ void op_3d(CPU *cpu) {
 }
 
 void op_3e(CPU *cpu) {
-  op_00(cpu);
+  // ld a, n
+  cpu->a(cpu->pcRead8());
 }
 
 void op_3f(CPU *cpu) {
@@ -901,7 +949,7 @@ void op_c2(CPU *cpu) {
 void op_c3(CPU *cpu) {
   // jp a16
   uint16_t newPC = cpu->pcRead16();
-  cpu->pcMod(newPC);
+  jump(newPC);
 }
 
 void op_c4(CPU *cpu) {

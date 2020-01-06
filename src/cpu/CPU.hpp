@@ -85,11 +85,6 @@ public:
 
   inline void clock(uint8_t cycles) { clock_t += cycles; }
 
-  inline void pcMod(uint16_t addr) {
-    pc(addr);
-    clock(4);
-  }
-
   inline uint8_t pcRead8() {
     uint8_t value = read8(pc());
     pc(pc() + 1);
