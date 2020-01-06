@@ -10,6 +10,8 @@ class CPU {
 public:
   explicit CPU(std::shared_ptr<MMU> mmu);
 
+  void printState();
+
   inline uint16_t af() { return _af; }
   inline void af(uint16_t value) { _af = value; }
   inline uint8_t a() { return (_af >> 8u) & 0xFFu; }
@@ -43,7 +45,6 @@ public:
 
   inline uint16_t pc() { return _pc; }
   inline void pc(uint16_t value) { _pc = value; }
-
 
   inline bool zero() { return (_af & 0x0080u) != 0; }
   inline void zero(bool zero) {
@@ -80,6 +81,47 @@ public:
     } else {
       _af &= 0xFFEFu;
     }
+  }
+
+  inline void clock(uint8_t cycles) { clock_t += cycles; }
+
+  inline void pcMod(uint16_t addr) {
+    pc(addr);
+    clock(4);
+  }
+
+  inline uint8_t pcRead8() {
+    uint8_t value = read8(pc());
+    pc(pc() + 1);
+    return value;
+  }
+
+  inline uint16_t pcRead16() {
+    uint16_t value = read16(pc());
+    pc(pc() + 2);
+    return value;
+  }
+
+  inline uint8_t read8(uint16_t addr) {
+    uint8_t value = mmu->read8(addr);
+    clock(4);
+    return value;
+  }
+
+  inline uint16_t read16(uint16_t addr) {
+    uint16_t value = mmu->read16(addr);
+    clock(8);
+    return value;
+  }
+
+  inline void write8(uint16_t addr, uint8_t value) {
+    mmu->write8(addr, value);
+    clock(4);
+  }
+
+  inline void write16(uint16_t addr, uint16_t value) {
+    mmu->write16(addr, value);
+    clock(8);
   }
 
   void emulateInstruction();

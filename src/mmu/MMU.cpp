@@ -130,10 +130,10 @@ void MMU::write8(uint16_t addr, uint8_t value) {
 }
 
 uint16_t MMU::read16(uint16_t addr) {
-  return (read8(addr) << 8u) | (read8(addr + 1));
+  return read8(addr) | (read8(addr + 1) << 8u);
 }
 
 void MMU::write16(uint16_t addr, uint16_t value) {
-  write8(addr, (value >> 8u) & 0xFFu);
   write8(addr, value & 0xFFu);
+  write8(addr, (value >> 8u) & 0xFFu);
 }

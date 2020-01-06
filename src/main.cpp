@@ -11,8 +11,10 @@ int main() {
 
   CPU cpu(mmu);
 
+  cpu.printState();
   for (int i = 0; i < 3; i++) {
     cpu.emulateInstruction();
+    cpu.printState();
   }
 
   return 0;

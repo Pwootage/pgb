@@ -1,3 +1,4 @@
+#include <iostream>
 #include "CPU.hpp"
 #include "interpreter/interpreter.hpp"
 
@@ -121,8 +122,24 @@ CPU::CPU(std::shared_ptr<MMU> mmu) : mmu(std::move(mmu)) {
 }
 
 void CPU::emulateInstruction() {
-  uint8_t op = mmu->read8(pc());
+  uint8_t op = pcRead8();
+  // Don't PCMod, this has already consumed a cycle
   pc(pc() + 1);
 
   interpreter::ops[op](this);
+}
+
+void CPU::printState() {
+  printf("====%.08d====\n", clock_t);
+  printf("AF %0.4x ", af());
+  printf(" BC: %0.4x ", bc());
+  if (zero()) printf("Z");
+  if (addSub()) printf("N");
+  if (halfCarry()) printf("H");
+  if (carry()) printf("C");
+  printf("\nDE: %0.4x ", de());
+  printf("HL: %0.4x\n", hl());
+  printf("SP: %0.4x ", sp());
+  printf("PC: %0.4x\n", pc());
+  fflush(stdout);
 }

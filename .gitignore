@@ -1,3 +1,6 @@
 /.idea
 /cmake-build-*
 /testRoms/*/build
+/testroms/mooneye
+/testroms/blargg
+.DS_Store
