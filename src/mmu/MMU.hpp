@@ -3,10 +3,12 @@
 
 #include <cstdint>
 #include <memory>
+#include <array>
 #include "../rom/ROM.hpp"
+#include "../gb_mode.hpp"
 
 // start and end are inclusive
-template <uint16_t startAddr, uint16_t endAddr>
+template<uint16_t startAddr, uint16_t endAddr>
 struct MemoryMap {
   static_assert(startAddr < endAddr, "End must be after start");
   static constexpr uint16_t start = startAddr;
@@ -16,6 +18,7 @@ struct MemoryMap {
   inline static constexpr bool inRange(uint16_t addr) {
     return addr >= start && addr <= end;
   }
+
   inline static constexpr bool addrIsBelow(uint16_t addr) {
     return addr <= end;
   }
@@ -43,6 +46,21 @@ public:
   std::shared_ptr<ROM> rom;
 
   uint8_t read8(uint16_t addr);
+  void write8(uint16_t addr, uint8_t value);
+
+  uint8_t wram_bank{1};
+  uint8_t vram_bank{0};
+  uint8_t rom_bank{1};
+  GBMode model = GBMode::GB;
+  bool unusedMemoryDuplicateMode = false;
+  bool sramEnable = true;
+  bool cartInserted = true;
+
+private:
+  std::array<uint8_t, VRAM::size> vram{};
+  std::array<uint8_t, VRAM::size> vram2{};
+  std::array<std::array<uint8_t, VRAM::size>, 8> wramx{};
+  std::array<uint8_t, HRAM::size> hram{};
 };
 
 

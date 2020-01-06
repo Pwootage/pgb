@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <array>
 
 class ROM {
 public:
@@ -11,17 +12,14 @@ public:
   static constexpr uint16_t SRAM_SIZE = 0x4000;
 
 private:
-  std::vector<uint8_t[BANK_SIZE]> banks;
-  uint8_t sram[SRAM_SIZE];
+  std::vector<std::array<uint8_t, BANK_SIZE>> banks;
+  std::array<uint8_t, SRAM_SIZE> sram{};
 
 public:
-  explicit ROM(std::vector<uint8_t[BANK_SIZE]> banks);
+  explicit ROM(std::vector<std::array<uint8_t, BANK_SIZE>> banks);
 
-
-  void switchBank(uint8_t bank);
-
-  uint8_t read(uint16_t offset);
-  void write(uint16_t offset, uint8_t value);
+  uint8_t read(uint8_t bank, uint16_t offset);
+  void write(uint8_t bank, uint16_t offset, uint8_t value);
 
   uint8_t readSram(uint16_t offset);
   void writeSram(uint16_t offset, uint8_t value);
