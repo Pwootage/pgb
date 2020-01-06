@@ -1,4 +1,5 @@
 #include "CPU.hpp"
+#include "interpreter/interpreter.hpp"
 
 constexpr uint16_t GB_INIT[]{
   0x01B0u,
@@ -120,5 +121,8 @@ CPU::CPU(std::shared_ptr<MMU> mmu) : mmu(std::move(mmu)) {
 }
 
 void CPU::emulateInstruction() {
-  // TODO
+  uint8_t op = mmu->read8(pc());
+  pc(pc() + 1);
+
+  interpreter::ops[op](this);
 }

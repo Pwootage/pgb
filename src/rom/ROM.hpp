@@ -6,6 +6,25 @@
 #include <vector>
 #include <array>
 
+struct GBHeader {
+  uint8_t vectors[0x100];
+  uint8_t start[4];
+  uint8_t logo[48];
+  uint8_t gameTitle[11];
+  uint8_t mfgCode[4];
+  uint8_t gbcFlag;
+  uint8_t newLicenseeCode[2];
+  uint8_t sgbFlag;
+  uint8_t cartType;
+  uint8_t romSize;
+  uint8_t ramSize;
+  uint8_t destCode;
+  uint8_t oldLicenseeCode;
+  uint8_t romVersion;
+  uint8_t headerChecksum;
+  uint16_t globalChecksum;
+};
+
 class ROM {
 public:
   static constexpr uint16_t BANK_SIZE = 0x4000;
@@ -23,6 +42,8 @@ public:
 
   uint8_t readSram(uint16_t offset);
   void writeSram(uint16_t offset, uint8_t value);
+
+  static std::shared_ptr<ROM> readRom(FILE *file);
 };
 
 
