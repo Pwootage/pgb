@@ -48,10 +48,14 @@ public:
   uint8_t read8(uint16_t addr);
   void write8(uint16_t addr, uint8_t value);
 
+  uint16_t read16(uint16_t addr);
+  void write16(uint16_t addr, uint16_t value);
+
   uint8_t wram_bank{1};
   uint8_t vram_bank{0};
   uint8_t rom_bank{1};
   GBMode model = GBMode::GB;
+  bool gbcMode = false;
   bool unusedMemoryDuplicateMode = false;
   bool sramEnable = true;
   bool cartInserted = true;

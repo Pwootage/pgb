@@ -6,10 +6,12 @@ enum class GBMode {
   GB = 0,
   /** Game boy pocket/game boy light, also MGB */
   GBP,
+  /** Super game boy */
+  SGB,
+  /** Super game boy 2 */
+  SGB2,
   /** Game boy color */
   GBC,
-  /** Super game boy/super game boy 2 */
-  SGB,
   /** Game boy advance */
   GBA,
   /** Game boy advance SP */
