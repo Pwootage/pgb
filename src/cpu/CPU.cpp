@@ -134,7 +134,7 @@ void CPU::printState() {
   printf("AF %0.4x ", af());
   printf(" BC: %0.4x ", bc());
   if (zero()) printf("Z");
-  if (addSub()) printf("N");
+  if (sub()) printf("N");
   if (halfCarry()) printf("H");
   if (carry()) printf("C");
   printf("\nDE: %0.4x ", de());

@@ -55,8 +55,8 @@ public:
     }
   }
 
-  inline bool addSub() { return (_af & 0x0040u) != 0; }
-  inline void addSub(bool addSub) {
+  inline bool sub() { return (_af & 0x0040u) != 0; }
+  inline void sub(bool addSub) {
     if (addSub) {
       _af |= 0x0040u;
     } else {
