@@ -143,3 +143,16 @@ void CPU::printState() {
   printf("PC: %0.4x\n", pc());
   fflush(stdout);
 }
+void CPU::freeze() {
+  // TODO: freeze. Here's the source from gambatte, when I have timers and stuff working
+  //	// permanently halt CPU.
+  //	// simply halt and clear IE to avoid unhalt from occuring,
+  //	// which avoids additional state to represent a "frozen" state.
+  //	nontrivial_ff_write(0xFF, 0, cc);
+  //	ackDmaReq(intreq_);
+  //	intreq_.halt();
+  //  if (cc < mem.nextEventTime()) {
+  //    unsigned long cycles = mem.nextEventTime() - cc;
+  //    cc += cycles + (-cycles & 3);
+  //  }
+}

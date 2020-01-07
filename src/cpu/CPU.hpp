@@ -121,6 +121,8 @@ public:
 
   void emulateInstruction();
 
+  void freeze();
+
 private:
   void initializeRegisters();
 
