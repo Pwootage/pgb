@@ -1,9 +1,11 @@
+#include <climits>
+
 #ifndef PGB_INTERPRETER_HPP
 #define PGB_INTERPRETER_HPP
 #include "../CPU.hpp"
 
 namespace interpreter {
-void op_00(CPU *cpu);
+void op_00(CPU  __unused *cpu);
 void op_01(CPU *cpu);
 void op_02(CPU *cpu);
 void op_03(CPU *cpu);
@@ -67,7 +69,7 @@ void op_3c(CPU *cpu);
 void op_3d(CPU *cpu);
 void op_3e(CPU *cpu);
 void op_3f(CPU *cpu);
-void op_40(CPU *cpu);
+void op_40(CPU __unused *cpu);
 void op_41(CPU *cpu);
 void op_42(CPU *cpu);
 void op_43(CPU *cpu);

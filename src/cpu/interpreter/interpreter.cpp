@@ -67,7 +67,7 @@ namespace interpreter {
   jump(cpu->pc() + offset);\
 } while (0)
 
-void op_00(CPU *cpu) {
+void op_00(CPU __unused *cpu) {
   // nop
 }
 
@@ -251,7 +251,7 @@ void op_1f(CPU *cpu) {
 
   cpu->zero(false);
   cpu->sub(false);
-  cpu->halfCarry(0);
+  cpu->halfCarry(false);
   cpu->carry((a & 1u) != 0);
 
   cpu->a((carry >> 1u) | carry);
@@ -300,7 +300,8 @@ void op_26(CPU *cpu) {
 }
 
 void op_27(CPU *cpu) {
-  op_00(cpu); // TODO
+  // daa
+  op_00(cpu); // TODO daa
 }
 
 void op_28(CPU *cpu) {
@@ -346,7 +347,10 @@ void op_2e(CPU *cpu) {
 }
 
 void op_2f(CPU *cpu) {
-  op_00(cpu); // TODO
+  // cpl
+  cpu->a(~cpu->a());
+  cpu->sub(true);
+  cpu->halfCarry(true);
 }
 
 void op_30(CPU *cpu) {
@@ -407,7 +411,10 @@ void op_36(CPU *cpu) {
 }
 
 void op_37(CPU *cpu) {
-  op_00(cpu); // TODO
+  // scf
+  cpu->carry(true);
+  cpu->halfCarry(false);
+  cpu->sub(false);
 }
 
 void op_38(CPU *cpu) {
@@ -453,263 +460,330 @@ void op_3e(CPU *cpu) {
 }
 
 void op_3f(CPU *cpu) {
-  op_00(cpu); // TODO
+  //ccf
+  cpu->carry(!cpu->carry());
+  cpu->sub(false);
+  cpu->halfCarry(false);
 }
 
-void op_40(CPU *cpu) {
-  op_00(cpu); // TODO
+void op_40(CPU __unused *cpu) {
+  // ld b, b
+  // noop
 }
 
 void op_41(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld b, c
+  cpu->b(cpu->c());
 }
 
 void op_42(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld b, d
+  cpu->b(cpu->d());
 }
 
 void op_43(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld b, e
+  cpu->b(cpu->e());
 }
 
 void op_44(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld b, h
+  cpu->b(cpu->h());
 }
 
 void op_45(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld b, l
+  cpu->b(cpu->l());
 }
 
 void op_46(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld b, (hl)
+  cpu->b(cpu->read8(cpu->hl()));
 }
 
 void op_47(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld b, a
+  cpu->b(cpu->a());
 }
 
 void op_48(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld c, b
+  cpu->c(cpu->b());
 }
 
-void op_49(CPU *cpu) {
-  op_00(cpu); // TODO
+void op_49(CPU __unused *cpu) {
+  // ld c, c
+  // noop
 }
 
 void op_4a(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld c, d
+  cpu->c(cpu->d());
 }
 
 void op_4b(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld c, e
+  cpu->c(cpu->e());
 }
 
 void op_4c(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld c, h
+  cpu->c(cpu->h());
 }
 
 void op_4d(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld c, l
+  cpu->c(cpu->l());
 }
 
 void op_4e(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld c, (hl)
+  cpu->c(cpu->read8(cpu->hl()));
 }
 
 void op_4f(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld c, a
+  cpu->c(cpu->a());
 }
 
 void op_50(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld d, b
+  cpu->d(cpu->b());
 }
 
 void op_51(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld d, c
+  cpu->d(cpu->c());
 }
 
-void op_52(CPU *cpu) {
-  op_00(cpu); // TODO
+void op_52(CPU __unused *cpu) {
+  // ld d, b
+  // noop
 }
 
 void op_53(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld d, e
+  cpu->d(cpu->e());
 }
 
 void op_54(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld d, h
+  cpu->d(cpu->h());
 }
 
 void op_55(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld d, l
+  cpu->d(cpu->l());
 }
 
 void op_56(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld d, (hl)
+  cpu->d(cpu->read8(cpu->hl()));
 }
 
 void op_57(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld d, a
+  cpu->d(cpu->a());
 }
 
 void op_58(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld e, b
+  cpu->e(cpu->b());
 }
 
 void op_59(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld e, c
+  cpu->e(cpu->c());
 }
 
 void op_5a(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld e, d
+  cpu->e(cpu->d());
 }
 
-void op_5b(CPU *cpu) {
-  op_00(cpu); // TODO
+void op_5b(CPU __unused *cpu) {
+  // ld e, e
+  // noop
 }
 
 void op_5c(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld e, h
+  cpu->e(cpu->h());
 }
 
 void op_5d(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld e, l
+  cpu->e(cpu->l());
 }
 
 void op_5e(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld e, (hl)
+  cpu->e(cpu->read8(cpu->hl()));
 }
 
 void op_5f(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld e, a
+  cpu->e(cpu->a());
 }
 
 void op_60(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld h, b
+  cpu->h(cpu->b());
 }
 
 void op_61(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld h, c
+  cpu->h(cpu->c());
 }
 
 void op_62(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld h, d
+  cpu->d(cpu->d());
 }
 
 void op_63(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld h, e
+  cpu->h(cpu->e());
 }
 
-void op_64(CPU *cpu) {
-  op_00(cpu); // TODO
+void op_64(CPU __unused *cpu) {
+  // ld h, h
+  // noop
 }
 
 void op_65(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld h, l
+  cpu->h(cpu->l());
 }
 
 void op_66(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld h, (hl)
+  cpu->h(cpu->read8(cpu->hl()));
 }
 
 void op_67(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld h, b
+  cpu->h(cpu->a());
 }
 
 void op_68(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld l, b
+  cpu->l(cpu->b());
 }
 
 void op_69(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld l, c
+  cpu->l(cpu->c());
 }
 
 void op_6a(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld l, d
+  cpu->l(cpu->d());
 }
 
 void op_6b(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld l, e
+  cpu->l(cpu->e());
 }
 
 void op_6c(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld l, h
+  cpu->l(cpu->h());
 }
 
-void op_6d(CPU *cpu) {
-  op_00(cpu); // TODO
+void op_6d(CPU __unused *cpu) {
+  // ld l, l
+  // noop
 }
 
 void op_6e(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld l, (hl)
+  cpu->l(cpu->read8(cpu->hl()));
 }
 
 void op_6f(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld l, a
+  cpu->l(cpu->a());
 }
 
 void op_70(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld (hl), b
+  cpu->write8(cpu->h(), cpu->b());
 }
 
 void op_71(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld (hl), c
+  cpu->write8(cpu->h(), cpu->c());
 }
 
 void op_72(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld (hl), d
+  cpu->write8(cpu->h(), cpu->d());
 }
 
 void op_73(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld (hl), e
+  cpu->write8(cpu->h(), cpu->e());
 }
 
 void op_74(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld (hl), b
+  cpu->write8(cpu->h(), cpu->h());
 }
 
 void op_75(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld (hl), l
+  cpu->write8(cpu->h(), cpu->l());
 }
 
 void op_76(CPU *cpu) {
-  op_00(cpu); // TODO
+  // halt
+  op_00(cpu); // TODO halt
 }
 
 void op_77(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld (hl), a
+  cpu->write8(cpu->h(), cpu->a());
 }
 
 void op_78(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld a, b
+  cpu->a(cpu->b());
 }
 
 void op_79(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld a, c
+  cpu->a(cpu->c());
 }
 
 void op_7a(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld a, d
+  cpu->a(cpu->d());
 }
 
 void op_7b(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld a, e
+  cpu->a(cpu->e());
 }
 
 void op_7c(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld a, h
+  cpu->a(cpu->h());
 }
 
 void op_7d(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld a, l
+  cpu->a(cpu->l());
 }
 
 void op_7e(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld a, (hl)
+  cpu->a(cpu->read8(cpu->hl()));
 }
 
-void op_7f(CPU *cpu) {
-  op_00(cpu); // TODO
+void op_7f(CPU __unused *cpu) {
+  // ld a, a
+  // noop
 }
 
 void op_80(CPU *cpu) {
