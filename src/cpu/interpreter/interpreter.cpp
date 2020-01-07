@@ -67,6 +67,102 @@ namespace interpreter {
   jump(cpu->pc() + offset);\
 } while (0)
 
+#define add_a_value(value) do {\
+  uint8_t a = cpu->a();\
+  uint8_t v = value;\
+  uint16_t sum = a + v;\
+  uint8_t halfSum = (a & 0xFu) + (v & 0xFu);\
+  cpu->zero(sum == 0u);\
+  cpu->sub(false);\
+  cpu->halfCarry(halfSum > 0x0Fu);\
+  cpu->carry(sum > 0xFFu);\
+  cpu->a(sum);\
+} while(0)
+
+#define adc_a_value(value) do {\
+  uint8_t a = cpu->a();\
+  uint8_t v = value;\
+  uint8_t carry = cpu->carry() ? 1 : 0;\
+  uint16_t sum = a + v + carry;\
+  uint8_t halfSum = (a & 0xFu) + (v & 0xFu) + carry;\
+  cpu->zero(sum == 0u);\
+  cpu->sub(false);\
+  cpu->halfCarry(halfSum > 0x0Fu);\
+  cpu->carry(sum > 0xFFu);\
+  cpu->a(sum);\
+} while(0)
+
+#define sub_a_value(value) do {\
+  uint8_t a = cpu->a();\
+  uint8_t v = value;\
+  uint16_t diff = a - v;\
+  uint8_t halfa = (a & 0xFu);\
+  uint8_t halfv = (v * 0xFu);\
+  cpu->zero(diff == 0u);\
+  cpu->sub(true);\
+  cpu->halfCarry(halfv > halfa);\
+  cpu->carry(v > a);\
+  cpu->a(diff);\
+} while(0)
+
+#define sbc_a_value(value) do {\
+  uint8_t a = cpu->a();\
+  uint8_t v = value;\
+  uint8_t carry = cpu->carry() ? 1 : 0;\
+  uint16_t diff = a - v - carry;\
+  uint8_t halfa = (a & 0xFu);\
+  uint8_t halfv = (v * 0xFu);\
+  cpu->zero(diff == 0u);\
+  cpu->sub(true);\
+  cpu->halfCarry(halfv > halfa + carry);\
+  cpu->carry(v > a + carry);\
+  cpu->a(diff);\
+} while(0)
+
+#define and_a_value(value) do {\
+  uint8_t a = cpu->a();\
+  uint8_t v = value;\
+  uint16_t aand = a & v;\
+  cpu->zero(aand == 0u);\
+  cpu->sub(false);\
+  cpu->halfCarry(true);\
+  cpu->carry(false);\
+  cpu->a(aand);\
+} while(0)
+
+#define xor_a_value(value) do {\
+  uint8_t a = cpu->a();\
+  uint8_t v = value;\
+  uint16_t xxor = a ^ v;\
+  cpu->zero(xxor == 0u);\
+  cpu->sub(false);\
+  cpu->halfCarry(false);\
+  cpu->carry(false);\
+  cpu->a(xxor);\
+} while(0)
+
+#define or_a_value(value) do {\
+  uint8_t a = cpu->a();\
+  uint8_t v = value;\
+  uint16_t oor = a | v;\
+  cpu->zero(oor == 0u);\
+  cpu->sub(false);\
+  cpu->halfCarry(false);\
+  cpu->carry(false);\
+  cpu->a(oor);\
+} while(0)
+
+#define cp_a_value(value) do {\
+  uint8_t a = cpu->a();\
+  uint8_t v = value;\
+  uint8_t halfa = (a & 0xFu);\
+  uint8_t halfv = (v * 0xFu);\
+  cpu->zero(a == v);\
+  cpu->sub(true);\
+  cpu->halfCarry(halfv > halfa);\
+  cpu->carry(v > a);\
+} while(0)
+
 void op_00(CPU __unused *cpu) {
   // nop
 }
@@ -787,259 +883,363 @@ void op_7f(CPU __unused *cpu) {
 }
 
 void op_80(CPU *cpu) {
-  op_00(cpu); // TODO
+  // add a, b
+  add_a_value(cpu->b());
 }
 
 void op_81(CPU *cpu) {
-  op_00(cpu); // TODO
+  // add a, c
+  add_a_value(cpu->c());
 }
 
 void op_82(CPU *cpu) {
-  op_00(cpu); // TODO
+  // add a, d
+  add_a_value(cpu->d());
 }
 
 void op_83(CPU *cpu) {
-  op_00(cpu); // TODO
+  // add a, e
+  add_a_value(cpu->e());
 }
 
 void op_84(CPU *cpu) {
-  op_00(cpu); // TODO
+  // add a, h
+  add_a_value(cpu->h());
 }
 
 void op_85(CPU *cpu) {
-  op_00(cpu); // TODO
+  // add a, l
+  add_a_value(cpu->l());
 }
 
 void op_86(CPU *cpu) {
-  op_00(cpu); // TODO
+  // add a, (hl)
+  add_a_value(cpu->read8(cpu->hl()));
 }
 
 void op_87(CPU *cpu) {
-  op_00(cpu); // TODO
+  // add a, a
+  add_a_value(cpu->a());
 }
 
 void op_88(CPU *cpu) {
-  op_00(cpu); // TODO
+  // adc a, b
+  adc_a_value(cpu->b());
 }
 
 void op_89(CPU *cpu) {
-  op_00(cpu); // TODO
+  // adc a, c
+  adc_a_value(cpu->c());
 }
 
 void op_8a(CPU *cpu) {
-  op_00(cpu); // TODO
+  // adc a, d
+  adc_a_value(cpu->d());
 }
 
 void op_8b(CPU *cpu) {
-  op_00(cpu); // TODO
+  // adc a, e
+  adc_a_value(cpu->e());
 }
 
 void op_8c(CPU *cpu) {
-  op_00(cpu); // TODO
+  // adc a, h
+  adc_a_value(cpu->h());
 }
 
 void op_8d(CPU *cpu) {
-  op_00(cpu); // TODO
+  // adc a, l
+  adc_a_value(cpu->l());
 }
 
 void op_8e(CPU *cpu) {
-  op_00(cpu); // TODO
+  // adc a, (hl)
+  adc_a_value(cpu->read8(cpu->hl()));
 }
 
 void op_8f(CPU *cpu) {
-  op_00(cpu); // TODO
+  // adc a, a
+  adc_a_value(cpu->a());
 }
 
 void op_90(CPU *cpu) {
-  op_00(cpu); // TODO
+  // sub a, b
+  // sub b
+  sub_a_value(cpu->b());
 }
 
 void op_91(CPU *cpu) {
-  op_00(cpu); // TODO
+  // sub a, c
+  // sub c
+  sub_a_value(cpu->c());
 }
 
 void op_92(CPU *cpu) {
-  op_00(cpu); // TODO
+  // sub a, d
+  // sub d
+  sub_a_value(cpu->d());
 }
 
 void op_93(CPU *cpu) {
-  op_00(cpu); // TODO
+  // sub a, e
+  // sub e
+  sub_a_value(cpu->e());
 }
 
 void op_94(CPU *cpu) {
-  op_00(cpu); // TODO
+  // sub a, h
+  // sub h
+  sub_a_value(cpu->h());
 }
 
 void op_95(CPU *cpu) {
-  op_00(cpu); // TODO
+  // sub a, l
+  // sub l
+  sub_a_value(cpu->l());
 }
 
 void op_96(CPU *cpu) {
-  op_00(cpu); // TODO
+  // sub a, b
+  // sub b
+  sub_a_value(cpu->read8(cpu->hl()));
 }
 
 void op_97(CPU *cpu) {
-  op_00(cpu); // TODO
+  // sub a, a
+  // sub a
+  sub_a_value(cpu->a());
 }
 
 void op_98(CPU *cpu) {
-  op_00(cpu); // TODO
+  // sbc a, b
+  sbc_a_value(cpu->b());
 }
 
 void op_99(CPU *cpu) {
-  op_00(cpu); // TODO
+  // sbc a, c
+  sbc_a_value(cpu->c());
 }
 
 void op_9a(CPU *cpu) {
-  op_00(cpu); // TODO
+  // sbc a, d
+  sbc_a_value(cpu->d());
 }
 
 void op_9b(CPU *cpu) {
-  op_00(cpu); // TODO
+  // sbc a, e
+  sbc_a_value(cpu->e());
 }
 
 void op_9c(CPU *cpu) {
-  op_00(cpu); // TODO
+  // sbc a, h
+  sbc_a_value(cpu->h());
 }
 
 void op_9d(CPU *cpu) {
-  op_00(cpu); // TODO
+  // sbc a, l
+  sbc_a_value(cpu->l());
 }
 
 void op_9e(CPU *cpu) {
-  op_00(cpu); // TODO
+  // sbc a, (hl)
+  sbc_a_value(cpu->read8(cpu->hl()));
 }
 
 void op_9f(CPU *cpu) {
-  op_00(cpu); // TODO
+  // sbc a, a
+  sbc_a_value(cpu->a());
 }
 
 void op_a0(CPU *cpu) {
-  op_00(cpu); // TODO
+  // and a, b
+  // and b
+  and_a_value(cpu->b());
 }
 
 void op_a1(CPU *cpu) {
-  op_00(cpu); // TODO
+  // and a, c
+  // and c
+  and_a_value(cpu->c());
 }
 
 void op_a2(CPU *cpu) {
-  op_00(cpu); // TODO
+  // and a, d
+  // and d
+  and_a_value(cpu->d());
 }
 
 void op_a3(CPU *cpu) {
-  op_00(cpu); // TODO
+  // and a, e
+  // and e
+  and_a_value(cpu->e());
 }
 
 void op_a4(CPU *cpu) {
-  op_00(cpu); // TODO
+  // and a, h
+  // and h
+  and_a_value(cpu->h());
 }
 
 void op_a5(CPU *cpu) {
-  op_00(cpu); // TODO
+  // and a, l
+  // and l
+  and_a_value(cpu->l());
 }
 
 void op_a6(CPU *cpu) {
-  op_00(cpu); // TODO
+  // and a, (hl)
+  // and (hl)
+  and_a_value(cpu->read8(cpu->hl()));
 }
 
 void op_a7(CPU *cpu) {
-  op_00(cpu); // TODO
+  // and a, a
+  // and a
+  and_a_value(cpu->a());
 }
 
 void op_a8(CPU *cpu) {
-  op_00(cpu); // TODO
+  // xor a, b
+  // xor b
+  xor_a_value(cpu->b());
 }
 
 void op_a9(CPU *cpu) {
-  op_00(cpu); // TODO
+  // xor a, c
+  // xor c
+  xor_a_value(cpu->c());
 }
 
 void op_aa(CPU *cpu) {
-  op_00(cpu); // TODO
+  // xor a, d
+  // xor d
+  xor_a_value(cpu->d());
 }
 
 void op_ab(CPU *cpu) {
-  op_00(cpu); // TODO
+  // xor a, e
+  // xor e
+  xor_a_value(cpu->e());
 }
 
 void op_ac(CPU *cpu) {
-  op_00(cpu); // TODO
+  // xor a, h
+  // xor h
+  xor_a_value(cpu->h());
 }
 
 void op_ad(CPU *cpu) {
-  op_00(cpu); // TODO
+  // xor a, l
+  // xor l
+  xor_a_value(cpu->l());
 }
 
 void op_ae(CPU *cpu) {
-  op_00(cpu); // TODO
+  // xor a, (hl)
+  // xor (hl)
+  xor_a_value(cpu->read8(cpu->hl()));
 }
 
 void op_af(CPU *cpu) {
-  op_00(cpu); // TODO
+  // xor a, a
+  // xor a
+  xor_a_value(cpu->a());
 }
 
 void op_b0(CPU *cpu) {
-  op_00(cpu); // TODO
+  // or a, b
+  // or b
+  or_a_value(cpu->b());
 }
 
 void op_b1(CPU *cpu) {
-  op_00(cpu); // TODO
+  // or a, c
+  // or c
+  or_a_value(cpu->c());
 }
 
 void op_b2(CPU *cpu) {
-  op_00(cpu); // TODO
+  // or a, d
+  // or d
+  or_a_value(cpu->d());
 }
 
 void op_b3(CPU *cpu) {
-  op_00(cpu); // TODO
+  // or a, e
+  // or e
+  or_a_value(cpu->e());
 }
 
 void op_b4(CPU *cpu) {
-  op_00(cpu); // TODO
+  // or a, h
+  // or h
+  or_a_value(cpu->h());
 }
 
 void op_b5(CPU *cpu) {
-  op_00(cpu); // TODO
+  // or a, l
+  // or l
+  or_a_value(cpu->l());
 }
 
 void op_b6(CPU *cpu) {
-  op_00(cpu); // TODO
+  // or a, (hl)
+  // or (hl)
+  or_a_value(cpu->read8(cpu->hl()));
 }
 
 void op_b7(CPU *cpu) {
-  op_00(cpu); // TODO
+  // or a, a
+  // or a
+  or_a_value(cpu->a());
 }
 
 void op_b8(CPU *cpu) {
-  op_00(cpu); // TODO
+  // cp a, b
+  // cp b
+  cp_a_value(cpu->b());
 }
 
 void op_b9(CPU *cpu) {
-  op_00(cpu); // TODO
+  // cp a, c
+  // cp c
+  cp_a_value(cpu->c());
 }
 
 void op_ba(CPU *cpu) {
-  op_00(cpu); // TODO
+  // cp a, d
+  // cp d
+  cp_a_value(cpu->d());
 }
 
 void op_bb(CPU *cpu) {
-  op_00(cpu); // TODO
+  // cp a, e
+  // cp e
+  cp_a_value(cpu->e());
 }
 
 void op_bc(CPU *cpu) {
-  op_00(cpu); // TODO
+  // cp a, h
+  // cp h
+  cp_a_value(cpu->h());
 }
 
 void op_bd(CPU *cpu) {
-  op_00(cpu); // TODO
+  // cp a, l
+  // cp l
+  cp_a_value(cpu->l());
 }
 
 void op_be(CPU *cpu) {
-  op_00(cpu); // TODO
+  // cp a, (hl)
+  // cp (hl)
+  cp_a_value(cpu->read8(cpu->hl()));
 }
 
 void op_bf(CPU *cpu) {
-  op_00(cpu); // TODO
+  // cp a, a
+  // cp a
+  cp_a_value(cpu->a());
 }
 
 void op_c0(CPU *cpu) {
