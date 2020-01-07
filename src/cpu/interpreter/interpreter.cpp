@@ -163,6 +163,18 @@ namespace interpreter {
   cpu->carry(v > a);\
 } while(0)
 
+#define pop_rr(r) do {\
+  uint16_t value = cpu->read16(cpu->sp());\
+  cpu->r(value);\
+  cpu->sp(cpu->sp() + 2);\
+} while (0)
+
+#define ret() do {\
+  uint16_t addr = cpu->read16(cpu->sp());\
+  cpu->sp(cpu->sp() + 2);\
+  jump(addr);\
+} while (0)
+
 void op_00(CPU __unused *cpu) {
   // nop
 }
@@ -1243,11 +1255,16 @@ void op_bf(CPU *cpu) {
 }
 
 void op_c0(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ret nz
+  cpu->clock(4);
+  if (!cpu->zero()) {
+    ret();
+  }
 }
 
 void op_c1(CPU *cpu) {
-  op_00(cpu); // TODO
+  // pop bc
+  pop_rr(bc);
 }
 
 void op_c2(CPU *cpu) {
@@ -1277,11 +1294,16 @@ void op_c7(CPU *cpu) {
 }
 
 void op_c8(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ret z
+  cpu->clock(4);
+  if (cpu->zero()) {
+    ret();
+  }
 }
 
 void op_c9(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ret
+  ret();
 }
 
 void op_ca(CPU *cpu) {
@@ -1309,11 +1331,16 @@ void op_cf(CPU *cpu) {
 }
 
 void op_d0(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ret nc
+  cpu->clock(4);
+  if (!cpu->carry()) {
+    ret();
+  }
 }
 
 void op_d1(CPU *cpu) {
-  op_00(cpu); // TODO
+  // pop de
+  pop_rr(de);
 }
 
 void op_d2(CPU *cpu) {
@@ -1341,11 +1368,17 @@ void op_d7(CPU *cpu) {
 }
 
 void op_d8(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ret c
+  cpu->clock(4);
+  if (cpu->carry()) {
+    ret();
+  }
 }
 
 void op_d9(CPU *cpu) {
-  op_00(cpu); // TODO
+  // reti
+  ret();
+  // TODO: enable interrupts
 }
 
 void op_da(CPU *cpu) {
@@ -1373,15 +1406,21 @@ void op_df(CPU *cpu) {
 }
 
 void op_e0(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ldh n, a
+  // ld [$FF00 + n], a
+  uint8_t  off = cpu->pcRead8();
+  cpu->write8(0xFF00 | off, cpu->a());
 }
 
 void op_e1(CPU *cpu) {
-  op_00(cpu); // TODO
+  // pop hl
+  pop_rr(hl);
 }
 
 void op_e2(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld [$FF00 + c], A
+  uint8_t  off = cpu->c();
+  cpu->write8(0xFF00 | off, cpu->a());
 }
 
 void op_e3(CPU *cpu) {
@@ -1437,15 +1476,21 @@ void op_ef(CPU *cpu) {
 }
 
 void op_f0(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ldh a, n
+  // ld a, [$FF00 + n]
+  uint8_t  off = cpu->pcRead8();
+  cpu->a(cpu->read8(0xFF00 | off));
 }
 
 void op_f1(CPU *cpu) {
-  op_00(cpu); // TODO
+  // pop af
+  pop_rr(af);
 }
 
 void op_f2(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld a, [$FF00 + c]
+  uint8_t  off = cpu->c();
+  cpu->a(cpu->read8(0xFF00 | off));
 }
 
 void op_f3(CPU *cpu) {
