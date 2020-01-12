@@ -1,4 +1,5 @@
 #include "MMU.hpp"
+#include "../gpu/GPU.hpp"
 
 #include <utility>
 
@@ -21,6 +22,7 @@ uint8_t MMU::read8(uint64_t clock, uint16_t addr) {
     }
   } else if (VRAM::addrIsBelow(addr)) {
     // VRAM
+    if (gpu_mode == GPU_MODE::SCAN_VRAM) return 0xFF;
     return vram[addr - VRAM::start];
   } else if (SRAM::addrIsBelow(addr)) {
     // SRAM
@@ -50,6 +52,7 @@ uint8_t MMU::read8(uint64_t clock, uint16_t addr) {
     // Object attribute table (sprite info table)
     uint16_t off = addr - OAM::start;
     if (off >= oam.size()) return 0xFF;
+    if (gpu_mode == GPU_MODE::SCAN_OAM || gpu_mode == GPU_MODE::SCAN_VRAM) return 0xFF;
     return oam[off];
   } else if (UNUSED::addrIsBelow(addr)) {
     //TODO unused area weirdness depending on mode
@@ -78,7 +81,9 @@ void MMU::write8(uint64_t clock, uint16_t addr, uint8_t value) {
     }
   } else if (VRAM::addrIsBelow(addr)) {
     //VRAM
-    vram[addr - VRAM::start] = value;
+    if (gpu_mode != GPU_MODE::SCAN_VRAM) {
+      vram[addr - VRAM::start] = value;
+    }
   } else if (SRAM::addrIsBelow(addr)) {
     //SRAM
     if (sramEnable) {
@@ -102,7 +107,9 @@ void MMU::write8(uint64_t clock, uint16_t addr, uint8_t value) {
   } else if (OAM::addrIsBelow(addr)) {
     uint16_t off = addr - OAM::start;
     if (off < oam.size()) {
-      oam[off] = value;
+      if (gpu_mode != GPU_MODE::SCAN_OAM && gpu_mode != GPU_MODE::SCAN_VRAM) {
+        oam[off] = value;
+      }
     }
   } else if (UNUSED::addrIsBelow(addr)) {
     //TODO unused area weirdness depending on mode
@@ -145,4 +152,19 @@ uint16_t MMU::read16(uint64_t clock, uint16_t addr) {
 void MMU::write16(uint64_t clock, uint16_t addr, uint16_t value) {
   write8(clock, addr, value & 0xFFu);
   write8(clock + 4, addr, (value >> 8u) & 0xFFu);
+}
+
+uint8_t MMU::oamread(uint8_t addr) {
+  if (addr < oam.size()) return oam[addr];
+  return 0xFF;
+}
+
+uint8_t MMU::vramread(uint8_t addr) {
+  if (addr < vram.size()) return vram[addr];
+  return 0xFF;
+}
+
+uint8_t MMU::vram2read(uint8_t addr) {
+  if (addr < vram2.size()) return vram2[addr];
+  return 0xFF;
 }

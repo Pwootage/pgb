@@ -22,4 +22,4 @@ add_executable(pgb
         src/cpu/interpreter/interpreter.cpp
         src/cpu/interpreter/interpreter.hpp
         src/cpu/interpreter/interpreter_cb.cpp
-        src/cpu/interpreter/interpreter_cb.hpp)
+        src/cpu/interpreter/interpreter_cb.hpp src/gpu/GPU.cpp src/gpu/GPU.hpp)

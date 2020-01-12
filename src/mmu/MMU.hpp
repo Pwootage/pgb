@@ -24,6 +24,18 @@ struct MemoryMap {
   }
 };
 
+enum class GPU_MODE {
+  SCAN_OAM = 2,
+  SCAN_VRAM = 3,
+  HBLANK = 0,
+  VBLANK = 1
+};
+
+enum class BACKGROUND_MODE {
+  BG,
+  WINDOW
+};
+
 class MMU {
 public:
   using ROM0 = MemoryMap<0x0000, 0x3FFF>;
@@ -48,6 +60,10 @@ public:
   uint8_t read8(uint64_t clock, uint16_t addr);
   void write8(uint64_t clock, uint16_t addr, uint8_t value);
 
+  uint8_t oamread(uint8_t addr);
+  uint8_t vramread(uint8_t addr);
+  uint8_t vram2read(uint8_t addr);
+
   uint16_t read16(uint64_t clock, uint16_t addr);
   void write16(uint64_t clock, uint16_t addr, uint16_t value);
 
@@ -56,17 +72,31 @@ public:
   uint8_t rom_bank{1};
   uint8_t interrupt_enable = 0;
   bool interrupts_enabled = false;
+  GPU_MODE gpu_mode;
   GBMode model = GBMode::GB;
   bool gbcMode = false;
   bool unusedMemoryDuplicateMode = false;
   bool sramEnable = true;
   bool cartInserted = true;
+  uint8_t scrollX;
+  uint8_t scrollY;
+  uint8_t lcdControl = 0;
 
   inline bool interrupt_joypad() { return (interrupt_enable & 0x10u) != 0; }
   inline bool interrupt_serial() { return (interrupt_enable & 0x8u) != 0; }
   inline bool interrupt_timer() { return (interrupt_enable & 0x4u) != 0; }
   inline bool interrupt_lcd_stat() { return (interrupt_enable & 0x2u) != 0; }
   inline bool interrupt_vblank() { return (interrupt_enable & 0x1u) != 0; }
+
+  inline bool lcdPower() { return (lcdControl & 0x80) != 0; }
+  inline bool lcdWindowTiles() { return (lcdControl & 0x40) != 0; }
+  inline bool lcdWindowEnable() { return (lcdControl & 0x20) != 0; }
+  inline uint8_t lcdBGWindowTileset() { return (lcdControl & 0x10) != 0 ? 1 : 0; }
+  inline uint8_t lcdBGTileMap() { return (lcdControl & 0x8) != 0 ? 1 : 0; }
+  inline uint8_t lcdSpriteSize() { return (lcdControl & 0x4) != 0 ? 1 : 0; }
+  inline bool lcdSpritesEnabled() { return (lcdControl & 0x2) != 0; }
+  inline bool bgEnabled() { return (lcdControl & 0x1) != 0; }
+
 
 private:
   std::array<uint8_t, VRAM::size> vram{};
