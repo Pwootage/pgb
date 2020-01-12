@@ -298,7 +298,8 @@ void op_0f(CPU *cpu) {
 }
 
 void op_10(CPU *cpu) {
-  op_00(cpu); // TODO: Stop
+  // stop 0
+  // TODO: Stop
 }
 
 void op_11(CPU *cpu) {
@@ -872,9 +873,9 @@ void op_75(CPU *cpu) {
   cpu->write8(cpu->h(), cpu->l());
 }
 
-void op_76(CPU *cpu) {
+void op_76(CPU __unused *cpu) {
   // halt
-  op_00(cpu); // TODO halt
+  // TODO halt
 }
 
 void op_77(CPU *cpu) {
@@ -1356,7 +1357,7 @@ void op_ca(CPU *cpu) {
   }
 }
 
-void op_cb(CPU *cpu) {
+void op_cb(CPU __unused *cpu) {
   // TODO: prefix cb
 }
 
@@ -1526,7 +1527,17 @@ void op_e7(CPU *cpu) {
 }
 
 void op_e8(CPU *cpu) {
-  op_00(cpu); // TODO
+  // add sp, n
+  uint16_t sp = cpu->sp();
+  int8_t offset = static_cast<int8_t>(cpu->pcRead8());
+  uint32_t add = sp + offset;
+  uint16_t halfAdd = (sp & 0xFFu) + (offset & 0xFFu);
+
+  cpu->zero(false);
+  cpu->sub(false);
+  cpu->halfCarry(halfAdd > 0xFFu);
+  cpu->carry(add > 0xFFFFu);
+  cpu->sp(add);
 }
 
 void op_e9(CPU *cpu) {
@@ -1535,7 +1546,9 @@ void op_e9(CPU *cpu) {
 }
 
 void op_ea(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld (nn), a
+  uint16_t addr = cpu->pcRead16();
+  cpu->write8(addr, cpu->a());
 }
 
 void op_eb(CPU *cpu) {
@@ -1578,8 +1591,9 @@ void op_f2(CPU *cpu) {
   cpu->a(cpu->read8(0xFF00 | off));
 }
 
-void op_f3(CPU *cpu) {
-  op_00(cpu); // TODO
+void op_f3(CPU __unused *cpu) {
+  // di
+  // TODO: disable interrupts
 }
 
 void op_f4(CPU *cpu) {
@@ -1602,19 +1616,35 @@ void op_f7(CPU *cpu) {
 }
 
 void op_f8(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld hl, sp+n
+  uint16_t sp = cpu->sp();
+  int8_t offset = static_cast<int8_t>(cpu->pcRead8());
+  uint32_t add = sp + offset;
+  uint16_t halfAdd = (sp & 0xFFu) + (offset & 0xFFu);
+
+  cpu->zero(false);
+  cpu->sub(false);
+  cpu->halfCarry(halfAdd > 0xFFu);
+  cpu->carry(add > 0xFFFFu);
+
+  cpu->hl(add);
 }
 
 void op_f9(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld sp, hl
+  cpu->sp(cpu->hl());
+  cpu->clock(4);
 }
 
 void op_fa(CPU *cpu) {
-  op_00(cpu); // TODO
+  // ld a, (nn)
+  uint16_t addr = cpu->pcRead16();
+  cpu->a(cpu->read8(addr));
 }
 
-void op_fb(CPU *cpu) {
-  op_00(cpu); // TODO
+void op_fb(CPU __unused *cpu) {
+  // ei
+  // TODO: enable interrupts
 }
 
 void op_fc(CPU *cpu) {
