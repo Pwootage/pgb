@@ -45,26 +45,37 @@ public:
 
   std::shared_ptr<ROM> rom;
 
-  uint8_t read8(uint16_t addr);
-  void write8(uint16_t addr, uint8_t value);
+  uint8_t read8(uint64_t clock, uint16_t addr);
+  void write8(uint64_t clock, uint16_t addr, uint8_t value);
 
-  uint16_t read16(uint16_t addr);
-  void write16(uint16_t addr, uint16_t value);
+  uint16_t read16(uint64_t clock, uint16_t addr);
+  void write16(uint64_t clock, uint16_t addr, uint16_t value);
 
   uint8_t wram_bank{1};
   uint8_t vram_bank{0};
   uint8_t rom_bank{1};
+  uint8_t interrupt_enable = 0;
+  bool interrupts_enabled = false;
   GBMode model = GBMode::GB;
   bool gbcMode = false;
   bool unusedMemoryDuplicateMode = false;
   bool sramEnable = true;
   bool cartInserted = true;
 
+  inline bool interrupt_joypad() { return (interrupt_enable & 0x10u) != 0; }
+  inline bool interrupt_serial() { return (interrupt_enable & 0x8u) != 0; }
+  inline bool interrupt_timer() { return (interrupt_enable & 0x4u) != 0; }
+  inline bool interrupt_lcd_stat() { return (interrupt_enable & 0x2u) != 0; }
+  inline bool interrupt_vblank() { return (interrupt_enable & 0x1u) != 0; }
+
 private:
   std::array<uint8_t, VRAM::size> vram{};
   std::array<uint8_t, VRAM::size> vram2{};
   std::array<std::array<uint8_t, VRAM::size>, 8> wramx{};
   std::array<uint8_t, HRAM::size> hram{};
+  std::array<uint8_t, 160> oam{};
+  void iowrite(uint16_t addr, uint8_t value);
+  uint8_t ioread(uint16_t addr) const;
 };
 
 

@@ -83,7 +83,8 @@ public:
     }
   }
 
-  inline void clock(uint8_t cycles) { clock_t += cycles; }
+  inline void clock(uint8_t cycles) { _clock += cycles; }
+  inline uint64_t clock() { return _clock; }
 
   inline uint8_t pcRead8() {
     uint8_t value = read8(pc());
@@ -98,24 +99,24 @@ public:
   }
 
   inline uint8_t read8(uint16_t addr) {
-    uint8_t value = mmu->read8(addr);
+    uint8_t value = mmu->read8(clock(), addr);
     clock(4);
     return value;
   }
 
   inline uint16_t read16(uint16_t addr) {
-    uint16_t value = mmu->read16(addr);
+    uint16_t value = mmu->read16(clock(), addr);
     clock(8);
     return value;
   }
 
   inline void write8(uint16_t addr, uint8_t value) {
-    mmu->write8(addr, value);
+    mmu->write8(clock(), addr, value);
     clock(4);
   }
 
   inline void write16(uint16_t addr, uint16_t value) {
-    mmu->write16(addr, value);
+    mmu->write16(clock(), addr, value);
     clock(8);
   }
 
@@ -123,6 +124,8 @@ public:
 
   void freeze();
 
+  void enableInterrupts();
+  void disableInterrupts();
 private:
   void initializeRegisters();
 
@@ -135,8 +138,7 @@ private:
   uint16_t _sp = 0xFFFE;
   uint16_t _pc = 0x0100;
 
-  uint16_t clock_m = 0;
-  uint16_t clock_t = 0;
+  uint64_t _clock = 0;
 
   uint16_t last_clock_m = 0;
   uint16_t last_clock_t = 0;

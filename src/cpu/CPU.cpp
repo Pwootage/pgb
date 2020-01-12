@@ -130,7 +130,7 @@ void CPU::emulateInstruction() {
 }
 
 void CPU::printState() {
-  printf("====%.08d====\n", clock_t);
+  printf("====%.8llu====\n", _clock);
   printf("AF %0.4x ", af());
   printf(" BC: %0.4x ", bc());
   if (zero()) printf("Z");
@@ -155,4 +155,12 @@ void CPU::freeze() {
   //    unsigned long cycles = mem.nextEventTime() - cc;
   //    cc += cycles + (-cycles & 3);
   //  }
+}
+
+void CPU::enableInterrupts() {
+  mmu->interrupts_enabled = true;
+}
+
+void CPU::disableInterrupts() {
+  mmu->interrupts_enabled = false;
 }

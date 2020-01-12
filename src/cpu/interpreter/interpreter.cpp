@@ -1446,9 +1446,8 @@ void op_d8(CPU *cpu) {
 }
 
 void op_d9(CPU *cpu) {
-  // reti
   ret();
-  // TODO: enable interrupts
+  cpu->enableInterrupts();
 }
 
 void op_da(CPU *cpu) {
@@ -1593,9 +1592,9 @@ void op_f2(CPU *cpu) {
   cpu->a(cpu->read8(0xFF00 | off));
 }
 
-void op_f3(CPU __unused *cpu) {
+void op_f3(CPU *cpu) {
   // di
-  // TODO: disable interrupts
+  cpu->disableInterrupts();
 }
 
 void op_f4(CPU *cpu) {
@@ -1644,9 +1643,9 @@ void op_fa(CPU *cpu) {
   cpu->a(cpu->read8(addr));
 }
 
-void op_fb(CPU __unused *cpu) {
+void op_fb(CPU *cpu) {
   // ei
-  // TODO: enable interrupts
+  cpu->enableInterrupts();
 }
 
 void op_fc(CPU *cpu) {
