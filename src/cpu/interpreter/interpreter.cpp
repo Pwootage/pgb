@@ -1,4 +1,5 @@
 #include "interpreter.hpp"
+#include "interpreter_cb.hpp"
 
 namespace interpreter {
 
@@ -1357,8 +1358,9 @@ void op_ca(CPU *cpu) {
   }
 }
 
-void op_cb(CPU __unused *cpu) {
-  // TODO: prefix cb
+void op_cb(CPU *cpu) {
+  uint8_t instr = cpu->pcRead8();
+  interpreter_cb::cbs[instr](cpu);
 }
 
 void op_cc(CPU *cpu) {

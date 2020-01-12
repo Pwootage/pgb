@@ -1,20 +1,18 @@
 import os
 from textwrap import dedent
 
-NAME = "interpreter"
+NAME = "interpreter_cb"
 
 
 def main():
-    try:
-        os.mkdir(NAME)
-    except:
-        pass
-    write_header()
-    write_impl()
+    print("This script is currently disabled, but was used to generate the initial files")
+    exit(1)
+    # write_header()
+    # write_impl()
 
 
 def write_header():
-    header = open(f"{NAME}/{NAME}.hpp", "w")
+    header = open(f"{NAME}.hpp", "w")
     header.write(dedent(
         f"""\
         #ifndef PGB_{NAME.upper()}_HPP
@@ -57,7 +55,7 @@ def write_header():
 
 
 def write_impl():
-    impl = open(f"{NAME}/{NAME}.cpp", "w")
+    impl = open(f"{NAME}.cpp", "w")
     impl.write(dedent(f"""\
     #include "{NAME}.hpp"
     
