@@ -1,6 +1,6 @@
 #ifndef PGB_INTERPRETER_CB_HPP
 #define PGB_INTERPRETER_CB_HPP
-#include "../CPU.hpp"
+#include "../../../include/pgb/CPU.hpp"
 
 namespace interpreter_cb {
 void cb_00(CPU *cpu);

@@ -1,4 +1,4 @@
-#include "GPU.hpp"
+#include "../../include/pgb/GPU.hpp"
 
 #include <utility>
 

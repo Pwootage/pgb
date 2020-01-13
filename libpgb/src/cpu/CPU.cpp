@@ -1,5 +1,5 @@
 #include <iostream>
-#include "CPU.hpp"
+#include "../../include/pgb/CPU.hpp"
 #include "interpreter/interpreter.hpp"
 
 constexpr uint16_t GB_INIT[]{

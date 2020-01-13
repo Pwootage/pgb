@@ -1,8 +1,8 @@
 #include <iostream>
-#include "rom/ROM.hpp"
-#include "mmu/MMU.hpp"
-#include "cpu/CPU.hpp"
-#include "gpu/GPU.hpp"
+#include "pgb/ROM.hpp"
+#include "pgb/MMU.hpp"
+#include "pgb/CPU.hpp"
+#include "pgb/GPU.hpp"
 #include <SDL.h>
 
 int main() {
@@ -32,7 +32,10 @@ int main() {
     LINE_WIDTH, LINES
   );
 
-  FILE *romFile = fopen("testRoms/basic_tests/build/test.gb", "rb");
+//  FILE *romFile = fopen("testRoms/basic_tests/build/test.gb", "rb");
+//  FILE *romFile = fopen("testRoms/other/opus5.gb", "rb");
+//  FILE *romFile = fopen("testRoms/blargg/cpu_instrs/individual/09-op r,r.gb", "rb");
+  FILE *romFile = fopen("testRoms/other/ttt.gb", "rb");
   std::shared_ptr<ROM> rom = ROM::readRom(romFile);
   fclose(romFile);
   std::shared_ptr<MMU> mmu(new MMU(rom));

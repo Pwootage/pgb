@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <memory>
 #include <array>
-#include "../rom/ROM.hpp"
-#include "../gb_mode.hpp"
+#include "ROM.hpp"
+#include "gb_mode.hpp"
 
 // start and end are inclusive
 template<uint16_t startAddr, uint16_t endAddr>

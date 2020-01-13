@@ -1,5 +1,5 @@
-#include "MMU.hpp"
-#include "../gpu/GPU.hpp"
+#include "../../include/pgb/MMU.hpp"
+#include "../../include/pgb/GPU.hpp"
 
 #include <utility>
 

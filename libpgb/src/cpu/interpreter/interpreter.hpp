@@ -2,7 +2,7 @@
 
 #ifndef PGB_INTERPRETER_HPP
 #define PGB_INTERPRETER_HPP
-#include "../CPU.hpp"
+#include "../../../include/pgb/CPU.hpp"
 
 namespace interpreter {
 void op_00(CPU  __unused *cpu);

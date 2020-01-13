@@ -2,7 +2,7 @@
 #define PGB_GPU_HPP
 
 
-#include "../mmu/MMU.hpp"
+#include "MMU.hpp"
 
 constexpr uint64_t LINE_WIDTH = 160;
 constexpr uint64_t LINES = 144;

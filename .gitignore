@@ -1,6 +1,8 @@
-/.idea
-/cmake-build-*
+.idea
+cmake-build-*
 /testRoms/*/build
 /testroms/mooneye
 /testroms/blargg
+/testroms/other
 .DS_Store
+CMakeLists.txt.user

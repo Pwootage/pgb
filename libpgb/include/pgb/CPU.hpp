@@ -3,8 +3,8 @@
 
 #include <cstdint>
 #include <utility>
-#include "../gb_mode.hpp"
-#include "../mmu/MMU.hpp"
+#include "gb_mode.hpp"
+#include "MMU.hpp"
 
 class CPU {
 public:
