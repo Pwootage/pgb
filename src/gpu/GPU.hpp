@@ -6,12 +6,12 @@
 
 constexpr uint64_t LINE_WIDTH = 160;
 constexpr uint64_t LINES = 144;
-constexpr uint64_t SCANLINE_OAM = 80;
-constexpr uint64_t SCANLINE_VRAM = 172;
-constexpr uint64_t SCANLINE_HBLANK = 204;
-constexpr uint64_t SCANLINE = SCANLINE_OAM + SCANLINE_VRAM + SCANLINE_HBLANK;
-constexpr uint64_t VBLANK = SCANLINE * 10;
-constexpr uint64_t FRAME = LINES * SCANLINE + VBLANK;
+constexpr uint64_t CLOCK_SCANLINE_OAM = 80;
+constexpr uint64_t CLOCK_SCANLINE_VRAM = 172;
+constexpr uint64_t CLOCK_SCANLINE_HBLANK = 204;
+constexpr uint64_t CLOCK_SCANLINE = CLOCK_SCANLINE_OAM + CLOCK_SCANLINE_VRAM + CLOCK_SCANLINE_HBLANK;
+constexpr uint64_t CLOCK_VBLANK = CLOCK_SCANLINE * 10;
+constexpr uint64_t CLOCK_FRAME = LINES * CLOCK_SCANLINE + CLOCK_VBLANK;
 
 struct GPU_PALETTE_ENTRY {
   uint16_t color;
@@ -111,7 +111,6 @@ public:
 
 private:
   std::shared_ptr<MMU> mmu;
-  uint64_t line = 0;
   uint64_t gpuClock = 0;
   void renderLine();
   void writeToVsyncBuffer();

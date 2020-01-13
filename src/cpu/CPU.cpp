@@ -123,10 +123,9 @@ CPU::CPU(std::shared_ptr<MMU> mmu) : mmu(std::move(mmu)) {
 
 void CPU::emulateInstruction() {
   uint8_t op = pcRead8();
-  // Don't PCMod, this has already consumed a cycle
-  pc(pc() + 1);
 
   interpreter::ops[op](this);
+//  printState();
 }
 
 void CPU::printState() {

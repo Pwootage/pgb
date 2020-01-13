@@ -60,9 +60,9 @@ public:
   uint8_t read8(uint64_t clock, uint16_t addr);
   void write8(uint64_t clock, uint16_t addr, uint8_t value);
 
-  uint8_t oamread(uint8_t addr);
-  uint8_t vramread(uint8_t addr);
-  uint8_t vram2read(uint8_t addr);
+  uint8_t oamread(uint16_t addr);
+  uint8_t vramread(uint16_t addr);
+  uint8_t vram2read(uint16_t addr);
 
   uint16_t read16(uint64_t clock, uint16_t addr);
   void write16(uint64_t clock, uint16_t addr, uint16_t value);
@@ -72,7 +72,8 @@ public:
   uint8_t rom_bank{1};
   uint8_t interrupt_enable = 0;
   bool interrupts_enabled = false;
-  GPU_MODE gpu_mode;
+  GPU_MODE gpu_mode = GPU_MODE::SCAN_OAM;
+  uint64_t gpu_line = 0;
   GBMode model = GBMode::GB;
   bool gbcMode = false;
   bool unusedMemoryDuplicateMode = false;
@@ -80,7 +81,7 @@ public:
   bool cartInserted = true;
   uint8_t scrollX;
   uint8_t scrollY;
-  uint8_t lcdControl = 0;
+  uint8_t lcdControl = 0x80u;
 
   inline bool interrupt_joypad() { return (interrupt_enable & 0x10u) != 0; }
   inline bool interrupt_serial() { return (interrupt_enable & 0x8u) != 0; }

@@ -26,7 +26,7 @@ namespace interpreter {
   uint8_t r = cpu->reg();\
   uint8_t res = r + 1;\
   uint8_t halfRes = (r & 0x0Fu) + 1;\
-  cpu->b(res);\
+  cpu->reg(res);\
   \
   cpu->zero(res == 0);\
   cpu->sub(false);\
@@ -37,7 +37,7 @@ namespace interpreter {
   uint8_t r = cpu->reg();\
   uint8_t res = r - 1;\
   uint8_t halfRes = (r & 0x0Fu) - 1;\
-  cpu->b(res);\
+  cpu->reg(res);\
   \
   cpu->zero(res == 0);\
   cpu->sub(false);\
@@ -46,7 +46,7 @@ namespace interpreter {
 
 #define ld_rr_nn(reg) do {\
   uint16_t imm = cpu->pcRead16();\
-  cpu->bc(imm);\
+  cpu->reg(imm);\
 } while (0)
 
 #define add_hl_rr(reg) do{\
@@ -164,9 +164,9 @@ namespace interpreter {
   cpu->carry(v > a);\
 } while(0)
 
-#define pop_rr(r) do {\
+#define pop_rr(reg) do {\
   uint16_t value = cpu->read16(cpu->sp());\
-  cpu->r(value);\
+  cpu->reg(value);\
   cpu->sp(cpu->sp() + 2);\
 } while (0)
 
@@ -175,9 +175,9 @@ namespace interpreter {
   cpu->sp(cpu->sp() - 2);\
 } while(0)
 
-#define push_rr(r) do {\
+#define push_rr(reg) do {\
   cpu->clock(4);\
-  push(cpu->r());\
+  push(cpu->reg());\
 } while (0)
 
 #define ret() do {\

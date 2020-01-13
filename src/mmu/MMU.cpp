@@ -22,7 +22,9 @@ uint8_t MMU::read8(uint64_t clock, uint16_t addr) {
     }
   } else if (VRAM::addrIsBelow(addr)) {
     // VRAM
-    if (gpu_mode == GPU_MODE::SCAN_VRAM) return 0xFF;
+    if (lcdPower() && gpu_mode == GPU_MODE::SCAN_VRAM) {
+      return 0xFF;
+    }
     return vram[addr - VRAM::start];
   } else if (SRAM::addrIsBelow(addr)) {
     // SRAM
@@ -52,7 +54,7 @@ uint8_t MMU::read8(uint64_t clock, uint16_t addr) {
     // Object attribute table (sprite info table)
     uint16_t off = addr - OAM::start;
     if (off >= oam.size()) return 0xFF;
-    if (gpu_mode == GPU_MODE::SCAN_OAM || gpu_mode == GPU_MODE::SCAN_VRAM) return 0xFF;
+    if (lcdPower() && (gpu_mode == GPU_MODE::SCAN_OAM || gpu_mode == GPU_MODE::SCAN_VRAM)) return 0xFF;
     return oam[off];
   } else if (UNUSED::addrIsBelow(addr)) {
     //TODO unused area weirdness depending on mode
@@ -81,7 +83,7 @@ void MMU::write8(uint64_t clock, uint16_t addr, uint8_t value) {
     }
   } else if (VRAM::addrIsBelow(addr)) {
     //VRAM
-    if (gpu_mode != GPU_MODE::SCAN_VRAM) {
+    if (!lcdPower() || gpu_mode != GPU_MODE::SCAN_VRAM) {
       vram[addr - VRAM::start] = value;
     }
   } else if (SRAM::addrIsBelow(addr)) {
@@ -107,7 +109,7 @@ void MMU::write8(uint64_t clock, uint16_t addr, uint8_t value) {
   } else if (OAM::addrIsBelow(addr)) {
     uint16_t off = addr - OAM::start;
     if (off < oam.size()) {
-      if (gpu_mode != GPU_MODE::SCAN_OAM && gpu_mode != GPU_MODE::SCAN_VRAM) {
+      if (!lcdPower() || (gpu_mode != GPU_MODE::SCAN_OAM && gpu_mode != GPU_MODE::SCAN_VRAM)) {
         oam[off] = value;
       }
     }
@@ -126,6 +128,21 @@ void MMU::write8(uint64_t clock, uint16_t addr, uint8_t value) {
 }
 
 void MMU::iowrite(uint16_t addr, uint8_t value) {
+  if (addr == 0xFF40) { // LCD/GPU control
+    this->lcdControl = value;
+  }
+  if (addr == 0xFF42) { // Scroll x
+    this->scrollX = value;
+  }
+  if (addr == 0xFF43) { // Scroll Y
+    this->scrollY = value;
+  }
+  if (addr == 0xFF44) { // Scan line
+    // ignore
+  }
+  if (addr == 0xFF47) { // Background palette
+    // TODO: background palette
+  }
   if (addr == 0xFF70) {
     this->wram_bank = value & 0x3u;
   }
@@ -135,7 +152,22 @@ void MMU::iowrite(uint16_t addr, uint8_t value) {
 }
 
 uint8_t MMU::ioread(uint16_t addr) const {
-  // TODO: the other IO registers
+  if (addr == 0xFF40) { // LCD/GPU control
+    return this->lcdControl;
+  }
+  if (addr == 0xFF42) { // Scroll x
+    return this->scrollX;
+  }
+  if (addr == 0xFF43) { // Scroll Y
+    return this->scrollY;
+  }
+  if (addr == 0xFF44) { // Scan line
+    return gpu_line;
+  }
+
+  if (addr == 0xFF47) { // Background palette
+    // TODO: background palette
+  }
   if (addr == 0xFF70) {
     return 0xF8u | this->wram_bank;
   }
@@ -154,17 +186,17 @@ void MMU::write16(uint64_t clock, uint16_t addr, uint16_t value) {
   write8(clock + 4, addr, (value >> 8u) & 0xFFu);
 }
 
-uint8_t MMU::oamread(uint8_t addr) {
+uint8_t MMU::oamread(uint16_t addr) {
   if (addr < oam.size()) return oam[addr];
   return 0xFF;
 }
 
-uint8_t MMU::vramread(uint8_t addr) {
+uint8_t MMU::vramread(uint16_t addr) {
   if (addr < vram.size()) return vram[addr];
   return 0xFF;
 }
 
-uint8_t MMU::vram2read(uint8_t addr) {
+uint8_t MMU::vram2read(uint16_t addr) {
   if (addr < vram2.size()) return vram2[addr];
   return 0xFF;
 }
