@@ -44,6 +44,7 @@ public:
   void writeSram(uint16_t offset, uint8_t value);
 
   static std::shared_ptr<ROM> readRom(FILE *file);
+  static std::shared_ptr<ROM> readRom(std::vector<uint8_t>);
 };
 
 

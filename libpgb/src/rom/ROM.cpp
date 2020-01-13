@@ -1,6 +1,7 @@
 #include "../../include/pgb/ROM.hpp"
 
 #include <utility>
+#include <cmath>
 
 ROM::ROM(std::vector<std::array<uint8_t, BANK_SIZE>> banks) : banks(std::move(banks)) {}
 
@@ -31,5 +32,16 @@ std::shared_ptr<ROM> ROM::readRom(FILE *file) {
     memcpy(banks[banks.size() - 1].data(), buffer.data(), read);
   }
 
+  return std::shared_ptr<ROM>(new ROM(std::move(banks)));
+}
+
+std::shared_ptr<ROM> ROM::readRom(std::vector<uint8_t> bytes) {
+  std::vector<std::array<uint8_t, BANK_SIZE>> banks;
+  for (int i = 0; i < bytes.size(); i += BANK_SIZE) {
+    banks.emplace_back();
+    size_t read = bytes.size() - i;
+    if (read > BANK_SIZE) read = BANK_SIZE;
+    memcpy(banks[banks.size() - 1].data(), bytes.data() + i, read);
+  }
   return std::shared_ptr<ROM>(new ROM(std::move(banks)));
 }

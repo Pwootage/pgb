@@ -27,16 +27,6 @@ set(LIBPGB_HEADERS
         src/cpu/interpreter/interpreter_cb.hpp
         )
 
-include_directories(include)
-
-add_executable(pgp-sdl
-        main.cpp
-        ${LIBPGB_SOURCES}
-        ${LIBPGB_HEADERS}
-        )
-
-target_link_libraries(pgp-sdl ${SDL2_LIBRARIES})
-
 add_library(pgb STATIC
         ${LIBPGB_SOURCES}
         ${LIBPGB_HEAERS}
@@ -45,3 +35,9 @@ add_library(pgb STATIC
 target_include_directories(pgb PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         )
+
+add_executable(pgp-sdl
+        main.cpp
+        )
+
+target_link_libraries(pgp-sdl ${SDL2_LIBRARIES} pgb)
