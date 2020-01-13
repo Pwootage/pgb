@@ -2,14 +2,19 @@
 #define MAINWINDOW_HPP
 
 #include <QMainWindow>
+#include <QTimer>
 #include <pgb/CPU.hpp>
 #include <pgb/GPU.hpp>
 #include <QGraphicsPixmapItem>
 
 class GBPixMap : public QGraphicsPixmapItem {
 public:
-  void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
   void advance(int phase) override;
+
+  std::shared_ptr<CPU> cpu;
+  std::shared_ptr<GPU> gpu;
+  std::shared_ptr<MMU> mmu;
+  std::shared_ptr<ROM> rom;
 };
 
 QT_BEGIN_NAMESPACE
@@ -30,12 +35,9 @@ private:
   Ui::MainWindow *ui;
   void loadRom();
 
-  std::shared_ptr<CPU> cpu;
-  std::shared_ptr<GPU> gpu;
-  std::shared_ptr<MMU> mmu;
-  std::shared_ptr<ROM> rom;
   QGraphicsScene *scene;
   GBPixMap *pixMap;
+  QTimer timer;
 };
 
 #endif // MAINWINDOW_HPP

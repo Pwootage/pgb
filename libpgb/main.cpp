@@ -44,7 +44,6 @@ int main() {
   GPU gpu(mmu);
 
   cpu.printState();
-  GPU_MODE lastMode = GPU_MODE::VBLANK;
   bool quit = false;
   uint64_t frame = 0;
   while (!quit) {
