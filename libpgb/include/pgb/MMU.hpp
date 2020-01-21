@@ -7,7 +7,7 @@
 #include "ROM.hpp"
 #include "gb_mode.hpp"
 
-#define RECORD_MEMORY 1
+#define RECORD_MEMORY 0
 
 
 // start and end are inclusive
@@ -16,7 +16,7 @@ struct MemoryMap {
   static_assert(startAddr < endAddr, "End must be after start");
   static constexpr uint16_t start = startAddr;
   static constexpr uint16_t end = endAddr;
-  static constexpr uint16_t size = endAddr - startAddr;
+  static constexpr uint16_t size = endAddr - startAddr + 1;
 
   inline static constexpr bool inRange(uint16_t addr) {
     return addr >= start && addr <= end;

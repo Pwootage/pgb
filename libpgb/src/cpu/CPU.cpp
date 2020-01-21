@@ -122,17 +122,13 @@ CPU::CPU(std::shared_ptr<MMU> mmu) : mmu(std::move(mmu)) {
 }
 
 void CPU::emulateInstruction() {
-  if (pc() > 0xC000 && pc() < 0xD000) {
-    printf("");
-  }
-
   uint8_t op = pcRead8();
 
   instrUsages[op]++;
 
   interpreter::ops[op](this);
 
-  printState();
+//  printState();
 }
 
 void CPU::printState() {

@@ -103,7 +103,7 @@ void MMU::write8(uint16_t addr, uint8_t value) {
   } else if (WRAMX::addrIsBelow(addr)) {
     //WRAMX
     auto bank = ((model > GBMode::GBC) ? wram_bank : 1) % wramx.size();
-    wramx[bank][(addr - WRAMX::start)] = value;
+    wramx[bank][(addr - WRAMX::start) % WRAMX::size] = value;
   } else if (ECHO::addrIsBelow(addr)) {
     // Weird mirror unused memory
     if (unusedMemoryDuplicateMode) {
@@ -134,6 +134,9 @@ void MMU::write8(uint16_t addr, uint8_t value) {
 }
 
 void MMU::iowrite(uint16_t addr, uint8_t value) {
+  if (addr == 0xFF01) { // serial read/write sb
+    printf("%c", value);
+  }
   if (addr == 0xFF40) { // LCD/GPU control
     this->lcdControl = value;
   }

@@ -34,8 +34,9 @@ int main() {
 
 //  FILE *romFile = fopen("testRoms/basic_tests/build/test.gb", "rb");
 //  FILE *romFile = fopen("testRoms/other/opus5.gb", "rb");
+  FILE *romFile = fopen("testRoms/blargg/cpu_instrs/individual/04-op r,imm.gb", "rb");
+//  FILE *romFile = fopen("testRoms/blargg/cpu_instrs/individual/06-ld r,r.gb", "rb");
 //  FILE *romFile = fopen("testRoms/blargg/cpu_instrs/individual/09-op r,r.gb", "rb");
-  FILE *romFile = fopen("testRoms/blargg/cpu_instrs/individual/06-ld r,r.gb", "rb");
 //  FILE *romFile = fopen("testRoms/blargg/cpu_instrs/instr_rr/test.gb", "rb");
 //  FILE *romFile = fopen("testRoms/other/ttt.gb", "rb");
   std::shared_ptr<ROM> rom = ROM::readRom(romFile);
@@ -45,7 +46,7 @@ int main() {
   CPU cpu(mmu);
   GPU gpu(mmu);
 
-  cpu.printState();
+//  cpu.printState();
   bool quit = false;
   uint64_t frame = 0;
   while (!quit) {
@@ -56,7 +57,7 @@ int main() {
     uint64_t newFrame = endClock / CLOCK_FRAME;
     if (newFrame != frame) {
       frame = newFrame;
-      cpu.printState();
+//      cpu.printState();
       // TODO: copy buffer over
       SDL_Event event;
       while (SDL_PollEvent(&event)) {
@@ -88,6 +89,7 @@ int main() {
       std::cout << std::hex << i << std::dec << " " << usage << std::endl;
     }
   }
+  #if RECORD_MEMORY
   std::cout << "=============" << std::endl;
   for (int i = 0; i < mmu->memoryReads.size(); i++) {
     uint64_t reads = mmu->memoryReads[i];
@@ -96,6 +98,7 @@ int main() {
       std::cout << std::hex << i << std::dec << " " << reads << "r " << writes << "w" << std::endl;
     }
   }
+  #endif
 
   SDL_DestroyWindow(window);
   SDL_Quit();

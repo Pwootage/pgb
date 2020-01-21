@@ -62,7 +62,7 @@ public:
   static constexpr uint16_t SRAM_SIZE = 0x4000;
   bool ram_enabled = false;
   bool ram_mode = false;
-  uint16_t rom_bank = 0x0;
+  uint16_t rom_bank = 0x1;
   uint8_t ram_bank = 0x0;
 
 private:
