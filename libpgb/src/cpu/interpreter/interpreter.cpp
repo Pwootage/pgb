@@ -40,7 +40,7 @@ namespace interpreter {
   cpu->reg(res);\
   \
   cpu->zero(res == 0);\
-  cpu->sub(false);\
+  cpu->sub(true);\
   cpu->halfCarry(halfRes > 0xF0u);\
 } while (0)
 
@@ -171,7 +171,7 @@ namespace interpreter {
 } while (0)
 
 #define push(value) do{\
-  cpu->write16(cpu->sp(), value);\
+  cpu->write16(cpu->sp() - 2, value);\
   cpu->sp(cpu->sp() - 2);\
 } while(0)
 
@@ -192,9 +192,8 @@ namespace interpreter {
 } while(0)
 
 #define call_nn() do{\
-  uint16_t pc = cpu->pc();\
-  uint16_t addr = cpu->pcRead16();\
-  jump(addr);\
+  uint16_t pc = cpu->pc() + 2;\
+  jp_nn();\
   push(pc);\
 } while(0)
 
@@ -214,7 +213,7 @@ void op_01(CPU *cpu) {
 }
 
 void op_02(CPU *cpu) {
-  // ld bc, a
+  // ld (bc), a
   cpu->write8(cpu->bc(), cpu->a());
 }
 
@@ -309,7 +308,7 @@ void op_11(CPU *cpu) {
 }
 
 void op_12(CPU *cpu) {
-  // ld de, a
+  // ld (de), a
   cpu->write8(cpu->de(), cpu->a());
 }
 
@@ -369,12 +368,12 @@ void op_1b(CPU *cpu) {
 
 void op_1c(CPU *cpu) {
   // inc e
-  inc_r(c);
+  inc_r(e);
 }
 
 void op_1d(CPU *cpu) {
   // dec e
-  dec_r(c);
+  dec_r(e);
 }
 
 void op_1e(CPU *cpu) {
@@ -1446,6 +1445,7 @@ void op_d8(CPU *cpu) {
 }
 
 void op_d9(CPU *cpu) {
+  // reti
   ret();
   cpu->enableInterrupts();
 }

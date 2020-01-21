@@ -35,7 +35,9 @@ int main() {
 //  FILE *romFile = fopen("testRoms/basic_tests/build/test.gb", "rb");
 //  FILE *romFile = fopen("testRoms/other/opus5.gb", "rb");
 //  FILE *romFile = fopen("testRoms/blargg/cpu_instrs/individual/09-op r,r.gb", "rb");
-  FILE *romFile = fopen("testRoms/other/ttt.gb", "rb");
+  FILE *romFile = fopen("testRoms/blargg/cpu_instrs/individual/06-ld r,r.gb", "rb");
+//  FILE *romFile = fopen("testRoms/blargg/cpu_instrs/instr_rr/test.gb", "rb");
+//  FILE *romFile = fopen("testRoms/other/ttt.gb", "rb");
   std::shared_ptr<ROM> rom = ROM::readRom(romFile);
   fclose(romFile);
   std::shared_ptr<MMU> mmu(new MMU(rom));
@@ -77,6 +79,21 @@ int main() {
       );
       SDL_RenderPresent(renderer);
       SDL_Delay(16);
+    }
+  }
+
+  for (int i = 0; i < cpu.instrUsages.size(); i++) {
+    int usage = cpu.instrUsages[i];
+    if (usage > 0) {
+      std::cout << std::hex << i << std::dec << " " << usage << std::endl;
+    }
+  }
+  std::cout << "=============" << std::endl;
+  for (int i = 0; i < mmu->memoryReads.size(); i++) {
+    uint64_t reads = mmu->memoryReads[i];
+    uint64_t writes = mmu->memoryWrites[i];
+    if (reads > 1000 || writes > 1000) {
+      std::cout << std::hex << i << std::dec << " " << reads << "r " << writes << "w" << std::endl;
     }
   }
 

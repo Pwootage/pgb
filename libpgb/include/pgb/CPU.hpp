@@ -99,24 +99,24 @@ public:
   }
 
   inline uint8_t read8(uint16_t addr) {
-    uint8_t value = mmu->read8(clock(), addr);
+    uint8_t value = mmu->read8(addr);
     clock(4);
     return value;
   }
 
   inline uint16_t read16(uint16_t addr) {
-    uint16_t value = mmu->read16(clock(), addr);
+    uint16_t value = mmu->read16(addr);
     clock(8);
     return value;
   }
 
   inline void write8(uint16_t addr, uint8_t value) {
-    mmu->write8(clock(), addr, value);
+    mmu->write8(addr, value);
     clock(4);
   }
 
   inline void write16(uint16_t addr, uint16_t value) {
-    mmu->write16(clock(), addr, value);
+    mmu->write16(addr, value);
     clock(8);
   }
 
@@ -126,6 +126,8 @@ public:
 
   void enableInterrupts();
   void disableInterrupts();
+
+  std::array<uint64_t, 256> instrUsages{};
 private:
   void initializeRegisters();
 

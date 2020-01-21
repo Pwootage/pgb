@@ -7,6 +7,9 @@
 #include "ROM.hpp"
 #include "gb_mode.hpp"
 
+#define RECORD_MEMORY 1
+
+
 // start and end are inclusive
 template<uint16_t startAddr, uint16_t endAddr>
 struct MemoryMap {
@@ -57,31 +60,36 @@ public:
 
   std::shared_ptr<ROM> rom;
 
-  uint8_t read8(uint64_t clock, uint16_t addr);
-  void write8(uint64_t clock, uint16_t addr, uint8_t value);
+  uint8_t read8(uint16_t addr);
+  void write8(uint16_t addr, uint8_t value);
 
   uint8_t oamread(uint16_t addr);
   uint8_t vramread(uint16_t addr);
   uint8_t vram2read(uint16_t addr);
 
-  uint16_t read16(uint64_t clock, uint16_t addr);
-  void write16(uint64_t clock, uint16_t addr, uint16_t value);
+  uint16_t read16(uint16_t addr);
+  void write16(uint16_t addr, uint16_t value);
 
   uint8_t wram_bank{1};
   uint8_t vram_bank{0};
-  uint8_t rom_bank{1};
   uint8_t interrupt_enable = 0;
   bool interrupts_enabled = false;
-  GPU_MODE gpu_mode = GPU_MODE::SCAN_OAM;
-  uint64_t gpu_line = 0;
   GBMode model = GBMode::GB;
   bool gbcMode = false;
   bool unusedMemoryDuplicateMode = false;
   bool sramEnable = true;
   bool cartInserted = true;
+
+  GPU_MODE gpu_mode = GPU_MODE::SCAN_OAM;
+  uint64_t gpu_line = 0;
   uint8_t scrollX;
   uint8_t scrollY;
   uint8_t lcdControl = 0x80u;
+  bool lycCheckEnable = false;
+  uint8_t lycCompare = 0;
+  bool mode2OamCheckEnable = false;
+  bool mode1VblankCheckEnable = false;
+  bool mode0HblankCheckEnable = false;
 
   inline bool interrupt_joypad() { return (interrupt_enable & 0x10u) != 0; }
   inline bool interrupt_serial() { return (interrupt_enable & 0x8u) != 0; }
@@ -89,15 +97,19 @@ public:
   inline bool interrupt_lcd_stat() { return (interrupt_enable & 0x2u) != 0; }
   inline bool interrupt_vblank() { return (interrupt_enable & 0x1u) != 0; }
 
-  inline bool lcdPower() { return (lcdControl & 0x80) != 0; }
-  inline bool lcdWindowTiles() { return (lcdControl & 0x40) != 0; }
-  inline bool lcdWindowEnable() { return (lcdControl & 0x20) != 0; }
-  inline uint8_t lcdBGWindowTileset() { return (lcdControl & 0x10) != 0 ? 1 : 0; }
-  inline uint8_t lcdBGTileMap() { return (lcdControl & 0x8) != 0 ? 1 : 0; }
-  inline uint8_t lcdSpriteSize() { return (lcdControl & 0x4) != 0 ? 1 : 0; }
-  inline bool lcdSpritesEnabled() { return (lcdControl & 0x2) != 0; }
-  inline bool bgEnabled() { return (lcdControl & 0x1) != 0; }
+  inline bool lcdPower() const { return (lcdControl & 0x80) != 0; }
+  inline bool lcdWindowTiles() const { return (lcdControl & 0x40) != 0; }
+  inline bool lcdWindowEnable() const { return (lcdControl & 0x20) != 0; }
+  inline uint8_t lcdBGWindowTileset() const { return (lcdControl & 0x10) != 0 ? 1 : 0; }
+  inline uint8_t lcdBGTileMap() const { return (lcdControl & 0x8) != 0 ? 1 : 0; }
+  inline uint8_t lcdSpriteSize() const { return (lcdControl & 0x4) != 0 ? 1 : 0; }
+  inline bool lcdSpritesEnabled() const { return (lcdControl & 0x2) != 0; }
+  inline bool bgEnabled() const { return (lcdControl & 0x1) != 0; }
 
+  #if RECORD_MEMORY
+  std::array<uint64_t, 0x10000> memoryReads{};
+  std::array<uint64_t, 0x10000> memoryWrites{};
+  #endif
 
 private:
   std::array<uint8_t, VRAM::size> vram{};
