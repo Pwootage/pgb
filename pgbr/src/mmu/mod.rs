@@ -34,7 +34,7 @@ bitflags! {
     }
 }
 
-struct MMU {
+pub struct MMU {
   rom: ROM,
 
   // working ram (banked on gbc)
@@ -50,10 +50,10 @@ struct MMU {
 
   // other flags
   // TODO: bitflag?
-  interrupt_enable: u8,               // interrupt enable register
-  interrupts_enabled: bool,           // are interrupts enabled
-  model: GBModel,                     // what kind of GB is this
-  gbc_mode: bool,                     // are we in gbc mode
+  pub interrupt_enable: u8,               // interrupt enable register
+  pub interrupts_enabled: bool,           // are interrupts enabled
+  pub model: GBModel,                     // what kind of GB is this
+  pub gbc_mode: bool,                     // are we in gbc mode
   unused_memory_duplicate_mode: bool, // Weird unused echo memory, TODO: where is this from
   sram_enabled: bool,                 // is sram enabled
   cart_inserted: bool,                // is a cartridge inserted
@@ -125,8 +125,11 @@ impl MMU {
       if self.lcd_control.contains(LCDControlFlags::POWER) && self.gpu_mode == GpuMode::ScanVRAM {
         0xFF
       } else {
-        // TODO: vram banking
-        self.vram[0][(addr - VRAM::start()) as usize]
+        if self.model.has_banked_ram() {
+          self.vram[self.vram_bank as usize][(addr - VRAM::start()) as usize]
+        } else {
+          self.vram[0][(addr - VRAM::start()) as usize]
+        }
       }
     } else if SRAM::contains(addr) {
       if !self.sram_enabled {

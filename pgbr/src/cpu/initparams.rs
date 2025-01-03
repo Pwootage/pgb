@@ -1,0 +1,98 @@
+pub struct InitParams {
+  pub a: u8,
+  pub f: u8,
+  pub b: u8,
+  pub c: u8,
+  pub d: u8,
+  pub e: u8,
+  pub h: u8,
+  pub l: u8,
+}
+
+pub const GB_INIT: InitParams = InitParams {
+  a: 0x01,
+  f: 0xB0,
+  b: 0x00,
+  c: 0x13,
+  d: 0x00,
+  e: 0xD8,
+  h: 0x01,
+  l: 0x4D,
+};
+
+pub const GBP_INIT: InitParams = InitParams {
+  a: 0xff,
+  f: 0xb0,
+  b: 0x00,
+  c: 0x13,
+  d: 0x00,
+  e: 0xD8,
+  h: 0x01,
+  l: 0x4D,
+};
+
+pub const GBC_INIT: InitParams = InitParams {
+  a: 0x11,
+  f: 0x80,
+  b: 0x00,
+  c: 0x00,
+  d: 0x00,
+  e: 0x08,
+  h: 0x00,
+  l: 0x7C,
+};
+
+pub const SGB_INIT: InitParams = InitParams {
+  a: 0x01,
+  f: 0x00,
+  b: 0x00,
+  c: 0x14,
+  d: 0x00,
+  e: 0x00,
+  h: 0xC0,
+  l: 0x60,
+};
+
+pub const SGB2_INIT: InitParams = InitParams {
+  a: 0xFF,
+  f: 0x00,
+  b: 0x00,
+  c: 0x00,
+  d: 0x00,
+  e: 0x00,
+  h: 0x00,
+  l: 0x00,
+};
+
+pub const GBA_INIT: InitParams = InitParams {
+  a: 0x11,
+  f: 0x00,
+  b: 0x01,
+  c: 0x00,
+  d: 0x00,
+  e: 0x08,
+  h: 0x00,
+  l: 0x7C,
+};
+
+pub const GBC_INIT_GBC: InitParams = InitParams {
+  a: 0x11,
+  f: 0x80,
+  b: 0x00,
+  c: 0x00,
+  d: 0xFF,
+  e: 0x56,
+  h: 0x00,
+  l: 0x0D,
+};
+
+pub const GBA_INIT_GBC: InitParams = InitParams {
+  a: 0x11,
+  f: 0x00,
+  b: 0x01,
+  c: 0x00,
+  d: 0xFF,
+  e: 0x56,
+  h: 0x00,
+  l: 0x0D,
+};
