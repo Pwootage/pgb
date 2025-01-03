@@ -293,12 +293,6 @@ impl MMU {
         self.lcd_control.bits()
       }
       0xFF41 => { // LCD status/STAT
-        // return ((lycCheckEnable ? 1 : 0) << 6u)
-        // | ((mode2OamCheckEnable ? 1 : 0) << 5u)
-        // | ((mode1VblankCheckEnable ? 1 : 0) << 4u)
-        // | ((mode0HblankCheckEnable ? 1 : 0) << 3u)
-        // | ((lycCompare == gpu_line ? 1 : 0) << 2u)
-        // | (lcdPower() ? static_cast<uint8_t>(gpu_mode) : 0);
         let mut res = 0u8;
         if self.lyc_check_enable {
           res |= 1 << 6;
