@@ -113,8 +113,8 @@ impl CPU {
 
 // emulate instructions
 impl CPU {
-  /** true if we actually executed an instruction */
-  pub fn emulate_instruction(&mut self) -> bool {
+  /** Some(op) if we actually executed an instruction */
+  pub fn emulate_instruction(&mut self) -> Option<u8> {
     // check for interrupts
     let requested_interrupts = self.mmu.get_requested_and_enabled_interrupts();
     // find the lowest bit set
@@ -134,7 +134,7 @@ impl CPU {
 
     if self.halted {
       self.add_clock(4);
-      return false;
+      return None;
     }
 
     let op = self.pc_read8();
@@ -145,10 +145,11 @@ impl CPU {
     // instrUsages[op]++;
 
     // interpreter::ops[op](this);
+
     GBInterpreter::interpret_instruction(self, op);
 
     // self.print_state();
-    true
+    Some(op)
   }
 
   pub fn enable_interrupts(&mut self) {

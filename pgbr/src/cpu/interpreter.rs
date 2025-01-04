@@ -59,15 +59,21 @@ impl GBInterpreter {
             // jr d
             let d = Self::get_d(cpu) as i16;
             let addr = cpu.reg.get_pc().wrapping_add_signed(d);
-            Self::jump(cpu, addr);
+            cpu.reg.set_pc(addr);
+            cpu.add_clock(4);
           }
           4..=7 => {
             // jr cc[y-4], d
-            let addr = | cpu: &mut CPU | {
+            let should_jump = Self::should_jump(cpu, instr.get_y() - 4);
+            if should_jump {
               let d = Self::get_d(cpu) as i16;
-              cpu.reg.get_pc().wrapping_add_signed(d)
-            };
-            Self::jump_cc(cpu, instr.get_y() - 4, addr, 1);
+              let addr = cpu.reg.get_pc().wrapping_add_signed(d);
+              cpu.reg.set_pc(addr);
+            } else {
+              let addr = cpu.reg.get_pc().wrapping_add_signed(1);
+              cpu.reg.set_pc(addr);
+            }
+            cpu.add_clock(4);
           }
           _ => unreachable!(),
         }
@@ -82,7 +88,7 @@ impl GBInterpreter {
           }
           1 => {
             // add hl, rp[p]
-            let hl =  cpu.reg.get_hl();
+            let hl = cpu.reg.get_hl();
             let v = Self::get_rp(cpu, instr.get_p());
             let add = hl.wrapping_add(v);
             let half_add = (hl & 0xFFF) + (v & 0xFFF);
@@ -169,7 +175,8 @@ impl GBInterpreter {
           _ => unreachable!(),
         }
       }
-      4 => { // 8 bit increment
+      4 => {
+        // 8 bit increment
         // inc r[y]
         let r = Self::get_r(cpu, instr.get_y());
         let res = r.wrapping_add(1);
@@ -180,7 +187,8 @@ impl GBInterpreter {
         // TODO: verify this; it was checking > 0xF0 before, which seems wrong
         cpu.reg.set_half_carry_flag(half_res > 0xF);
       }
-      5 => { // 8 bit decrement
+      5 => {
+        // 8 bit decrement
         // dec r[y]
         let r = Self::get_r(cpu, instr.get_y());
         let res = r.wrapping_sub(1);
@@ -191,12 +199,14 @@ impl GBInterpreter {
         // TODO: verify this; it was checking > 0xF0 before, which seems wrong
         cpu.reg.set_half_carry_flag(half_res > 0xF);
       }
-      6 => { // 8 bit load immediate
+      6 => {
+        // 8 bit load immediate
         // ld r[y], n
         let v = Self::get_n(cpu);
         Self::set_r(cpu, instr.get_y(), v);
       }
-      7 => { // misc flag stuff
+      7 => {
+        // misc flag stuff
         match instr.get_y() {
           0 => {
             // rlca
@@ -292,6 +302,7 @@ impl GBInterpreter {
     let z = instr.get_z();
     if y == 6 && z == 6 {
       cpu.halt();
+      return;
     }
     let v = Self::get_r(cpu, z);
     Self::set_r(cpu, y, v);
@@ -310,7 +321,12 @@ impl GBInterpreter {
         match instr.get_y() {
           0..=3 => {
             // ret cc[y]
-            Self::ret_cc(cpu, instr.get_y());
+            let should_jump = Self::should_jump(cpu, instr.get_y());
+            if should_jump {
+              Self::ret(cpu);
+              cpu.add_clock(4);
+            }
+            cpu.add_clock(4);
           }
           4 => {
             // ldh n, a
@@ -330,6 +346,7 @@ impl GBInterpreter {
             cpu.reg.set_half_carry_flag(half_add > 0xF);
             cpu.reg.set_carry_flag(byte_add > 0xFF);
             cpu.reg.set_sp(add);
+            cpu.add_clock(8);
           }
           6 => {
             // ldh a, n
@@ -350,8 +367,9 @@ impl GBInterpreter {
             cpu.reg.set_half_carry_flag(half_add > 0xF);
             cpu.reg.set_carry_flag(byte_add > 0xFF);
             cpu.reg.set_hl(add);
+            cpu.add_clock(4);
           }
-          _ => unreachable!()
+          _ => unreachable!(),
         }
       }
       1 => {
@@ -368,26 +386,28 @@ impl GBInterpreter {
               0 => {
                 // ret
                 Self::ret(cpu);
+                cpu.add_clock(4);
               }
               1 => {
                 // reti
                 Self::ret(cpu);
+                cpu.add_clock(4);
                 cpu.enable_interrupts();
               }
               2 => {
                 // jp hl
-                // TODO: check if this takes an extra clock cycle or not!
-                Self::jump(cpu, cpu.reg.get_hl());
+                let addr = cpu.reg.get_hl();
+                cpu.reg.set_pc(addr);
               }
               3 => {
                 // ld sp, hl
                 cpu.reg.set_sp(cpu.reg.get_hl());
                 cpu.add_clock(4);
               }
-              _ => unreachable!()
+              _ => unreachable!(),
             }
           }
-          _ => unreachable!()
+          _ => unreachable!(),
         }
       }
       2 => {
@@ -395,8 +415,16 @@ impl GBInterpreter {
         match instr.get_y() {
           0..=3 => {
             // jp cc[y], nn
-            let addr = | cpu: &mut CPU | Self::get_nn(cpu);
-            Self::jump_cc(cpu, instr.get_y(), addr, 2);
+            let should_jump = Self::should_jump(cpu, instr.get_y());
+            if should_jump {
+              let addr = Self::get_nn(cpu);
+              cpu.reg.set_pc(addr);
+            } else {
+              let addr = cpu.reg.get_pc().wrapping_add_signed(2);
+              cpu.reg.set_pc(addr);
+              cpu.add_clock(4);
+            }
+            cpu.add_clock(4);
           }
           4 => {
             // ld (0xFF00+c), a
@@ -420,7 +448,7 @@ impl GBInterpreter {
             let v = cpu.read8(off);
             cpu.reg.set_a(v);
           }
-          _ => unreachable!()
+          _ => unreachable!(),
         }
       }
       3 => {
@@ -429,7 +457,8 @@ impl GBInterpreter {
           0 => {
             // jp nn
             let addr = cpu.pc_read16();
-            Self::jump(cpu, addr);
+            cpu.reg.set_pc(addr);
+            cpu.add_clock(4);
           }
           1 => {
             // cb prefix
@@ -459,7 +488,7 @@ impl GBInterpreter {
             // ei
             cpu.enable_interrupts();
           }
-          _ => unreachable!()
+          _ => unreachable!(),
         }
       }
       4 => {
@@ -467,14 +496,22 @@ impl GBInterpreter {
         match instr.get_y() {
           0..=3 => {
             // call cc[y], nn
-            let addr = | cpu: &mut CPU | Self::get_nn(cpu);
-            Self::call_cc(cpu, instr.get_y(), addr, 2);
+            let should_jump = Self::should_jump(cpu, instr.get_y());
+            if should_jump {
+              let addr = Self::get_nn(cpu);
+              Self::call(cpu, addr);
+            } else {
+              let addr = cpu.reg.get_pc().wrapping_add_signed(2);
+              cpu.reg.set_pc(addr);
+              cpu.add_clock(4);
+            }
+            cpu.add_clock(4);
           }
           4..=7 => {
             // invalid
             cpu.freeze()
           }
-          _ => unreachable!()
+          _ => unreachable!(),
         }
       }
       5 => {
@@ -492,15 +529,16 @@ impl GBInterpreter {
                 // call nn
                 let addr = Self::get_nn(cpu);
                 Self::call(cpu, addr);
+                cpu.add_clock(4);
               }
               1..=3 => {
                 // invalid
                 cpu.freeze();
               }
-              _ => unreachable!()
+              _ => unreachable!(),
             }
           }
-          _ => unreachable!()
+          _ => unreachable!(),
         }
       }
       6 => {
@@ -512,8 +550,9 @@ impl GBInterpreter {
         // rst
         Self::push(cpu, cpu.reg.get_pc());
         cpu.reg.set_pc((instr.get_y() * 8) as u16);
+        cpu.add_clock(4);
       }
-      _ => unreachable!()
+      _ => unreachable!(),
     }
   }
 
@@ -552,7 +591,7 @@ impl GBInterpreter {
         let mask = 1 << bit;
         Self::set_r(cpu, op.get_z(), v | mask);
       }
-      _ => unreachable!()
+      _ => unreachable!(),
     }
   }
 }
@@ -567,7 +606,7 @@ impl GBInterpreter {
       3 => cpu.reg.get_e(),
       4 => cpu.reg.get_h(),
       5 => cpu.reg.get_l(),
-      6 => cpu.mmu.read8(cpu.reg.get_hl()),
+      6 => cpu.read8(cpu.reg.get_hl()),
       7 => cpu.reg.get_a(),
       _ => unreachable!(),
     }
@@ -581,7 +620,7 @@ impl GBInterpreter {
       3 => cpu.reg.set_e(value),
       4 => cpu.reg.set_h(value),
       5 => cpu.reg.set_l(value),
-      6 => cpu.mmu.write8(cpu.reg.get_hl(), value),
+      6 => cpu.write8(cpu.reg.get_hl(), value),
       7 => cpu.reg.set_a(value),
       _ => unreachable!(),
     }
@@ -642,84 +681,26 @@ impl GBInterpreter {
 
 // helpers
 impl GBInterpreter {
-  fn jump(cpu: &mut CPU, addr: u16) {
-    cpu.reg.set_pc(addr);
-    cpu.add_clock(4);
-  }
-
-  fn jump_cc(cpu: &mut CPU, cc: u8, addr: fn(&mut CPU) -> u16, skip_on_false: u16) {
+  fn should_jump(cpu: &mut CPU, cc: u8) -> bool {
     match cc {
-      0 if !cpu.reg.get_zero_flag() => {
-        let v = addr(cpu);
-        Self::jump(cpu, v)
-      },
-      1 if cpu.reg.get_zero_flag() => {
-        let v = addr(cpu);
-        Self::jump(cpu, v)
-      },
-      2 if !cpu.reg.get_carry_flag() => {
-        let v = addr(cpu);
-        Self::jump(cpu, v)
-      },
-      3 if cpu.reg.get_carry_flag() => {
-        let v = addr(cpu);
-        Self::jump(cpu, v)
-      },
-      _ => {
-        // don't jump
-        Self::jump(cpu, cpu.reg.get_pc().wrapping_add(skip_on_false))
-      }
+      0 if !cpu.reg.get_zero_flag() => true,
+      1 if cpu.reg.get_zero_flag() => true,
+      2 if !cpu.reg.get_carry_flag() => true,
+      3 if cpu.reg.get_carry_flag() => true,
+      _ => false,
     }
   }
 
   fn ret(cpu: &mut CPU) {
     let addr = cpu.read16(cpu.reg.get_sp());
     cpu.reg.add_sp(2);
-    Self::jump(cpu, addr);
-  }
-
-  fn ret_cc(cpu: &mut CPU,cc: u8) {
-    cpu.add_clock(4);
-    match cc {
-      0 if !cpu.reg.get_zero_flag() => Self::ret(cpu),
-      1 if cpu.reg.get_zero_flag() => Self::ret(cpu),
-      2 if !cpu.reg.get_carry_flag() => Self::ret(cpu),
-      3 if cpu.reg.get_carry_flag() => Self::ret(cpu),
-      _ => {
-        // don't jump
-      }
-    }
+    cpu.reg.set_pc(addr);
   }
 
   fn call(cpu: &mut CPU, addr: u16) {
     let pc = cpu.reg.get_pc();
-    Self::jump(cpu, addr);
+    cpu.reg.set_pc(addr);
     Self::push(cpu, pc);
-  }
-
-  fn call_cc(cpu: &mut CPU, cc: u8, addr: fn(&mut CPU) -> u16, skip_on_false: u16) {
-    match cc {
-      0 if !cpu.reg.get_zero_flag() => {
-        let v = addr(cpu);
-        Self::call(cpu, v)
-      },
-      1 if cpu.reg.get_zero_flag() => {
-        let v = addr(cpu);
-        Self::call(cpu, v)
-      },
-      2 if !cpu.reg.get_carry_flag() => {
-        let v = addr(cpu);
-        Self::call(cpu, v)
-      },
-      3 if cpu.reg.get_carry_flag() => {
-        let v = addr(cpu);
-        Self::call(cpu, v)
-      },
-      _ => {
-        // don't jump
-        Self::jump(cpu, cpu.reg.get_pc().wrapping_add(skip_on_false))
-      }
-    }
   }
 
   pub fn push(cpu: &mut CPU, value: u16) {
@@ -795,15 +776,14 @@ impl GBInterpreter {
         // cp
         // cp a,
         let halfa = a & 0xF;
-        let halfv = v &0xF;
+        let halfv = v & 0xF;
         cpu.reg.set_zero_flag(a == v);
         cpu.reg.set_subtract_flag(true);
         cpu.reg.set_half_carry_flag(halfv > halfa);
         cpu.reg.set_carry_flag(v > a);
       }
-      _ => unreachable!()
+      _ => unreachable!(),
     }
-
   }
 
   fn rot(cpu: &mut CPU, op: u8, v: u8) -> u8 {
@@ -892,7 +872,7 @@ impl GBInterpreter {
         cpu.reg.set_carry_flag(carry != 0);
         res
       }
-      _ => unreachable!()
+      _ => unreachable!(),
     }
   }
 }

@@ -13,7 +13,7 @@ impl<const START_ADDR: u16, const END_ADDR: u16> MemoryMap<START_ADDR, END_ADDR>
   }
 
   pub const fn size() -> usize {
-    (Self::end() - Self::start()) as usize
+    (Self::end() - Self::start() + 1) as usize
   }
 
   pub const fn contains(addr: u16) -> bool {
