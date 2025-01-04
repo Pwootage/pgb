@@ -91,14 +91,14 @@ impl MMU {
       model: GBModel::GB,
       gbc_mode: false,
       unused_memory_duplicate_mode: false,
-      sram_enabled: false,
-      cart_inserted: false,
+      sram_enabled: true,
+      cart_inserted: true,
       // gpu state
-      gpu_mode: GpuMode::HBlank,
+      gpu_mode: GpuMode::ScanOAM,
       gpu_line: 0,
       scroll_x: 0,
       scroll_y: 0,
-      lcd_control: LCDControlFlags::empty(),
+      lcd_control: LCDControlFlags::POWER,
       lyc_check_enable: false,
       lyc_compare: 0,
       mode2_oam_check_enable: false,
@@ -163,15 +163,15 @@ impl MMU {
       } else if self.lcd_control.contains(LCDControlFlags::POWER) && (self.gpu_mode == GpuMode::ScanOAM || self.gpu_mode == GpuMode::ScanVRAM) {
         0xFF
       } else {
-        self.oam[off]
+        self.oam[off as usize]
       }
-    } else if (UNUSED::contains(addr)) {
+    } else if UNUSED::contains(addr) {
       //TODO unused area weirdness depending on mode
       0
     } else if IO::contains(addr) {
       self.ioread(addr)
     } else if HRAM::contains(addr) {
-      return self.hram[addr - HRAM::start()];
+      return self.hram[(addr - HRAM::start()) as usize];
     } else if IE::contains(addr) {
       self.interrupt_enable
     } else {
@@ -192,13 +192,13 @@ impl MMU {
       }
     } else if VRAM::contains(addr) {
       //VRAM
-      if (!self.lcd_control.contains(LCDControlFlags::POWER) || self.gpu_mode != GpuMode::ScanVRAM) {
-        self.vram[addr - VRAM::start] = value;
+      if !self.lcd_control.contains(LCDControlFlags::POWER) || self.gpu_mode != GpuMode::ScanVRAM {
+        self.vram[(self.vram_bank & 1) as usize][(addr - VRAM::start()) as usize] = value;
       }
     } else if SRAM::contains(addr) {
       //SRAM
       if self.sram_enabled {
-        self.rom.write_sram(addr - SRAM::start, value);
+        self.rom.write_sram(addr - SRAM::start(), value);
       }
     } else if WRAM0::contains(addr) {
       //WRAM0
@@ -220,10 +220,10 @@ impl MMU {
         self.write8(addr - ECHO::start() + WRAM0::start(), value);
       }
     } else if OAM::contains(addr) {
-      let off = addr - OAM::start;
-      if off < self.oam.size() {
+      let off = addr - OAM::start();
+      if off < self.oam.len() as u16 {
         if !self.lcd_control.contains(LCDControlFlags::POWER) || (self.gpu_mode != GpuMode::ScanOAM && self.gpu_mode != GpuMode::ScanVRAM) {
-          self.oam[off] = value;
+          self.oam[off as usize] = value;
         }
       }
     } else if UNUSED::contains(addr) {
@@ -234,7 +234,7 @@ impl MMU {
       self.iowrite(addr, value);
     } else if HRAM::contains(addr) {
       // Internal CPU ram
-      self.hram[addr - HRAM::start] = value;
+      self.hram[(addr - HRAM::start()) as usize] = value;
     } else if IE::contains(addr) {
       self.interrupt_enable = value;
     } else {

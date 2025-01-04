@@ -5,6 +5,7 @@ mod interpreter;
 use crate::cpu::initparams::{
   GBA_INIT, GBA_INIT_GBC, GBC_INIT, GBC_INIT_GBC, GBP_INIT, GB_INIT, SGB2_INIT, SGB_INIT,
 };
+use crate::cpu::interpreter::GBInterpreter;
 use crate::cpu::registers::GBRegisters;
 use crate::enums::GBModel;
 use crate::mmu::MMU;
@@ -12,7 +13,7 @@ use crate::mmu::MMU;
 pub struct CPU {
   mmu: MMU,
 
-  reg: GBRegisters,
+  pub reg: GBRegisters,
 
   clock: u64,
   last_clock_m: u16,
@@ -51,7 +52,7 @@ impl CPU {
     println!("A:{:02X} F:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X}",
               self.reg.get_a(), self.reg.get_f(), self.reg.get_b(), self.reg.get_c(),
               self.reg.get_d(), self.reg.get_e(), self.reg.get_h(), self.reg.get_l(),
-              self.reg.get_sp(), self.reg.get_pc(),
+              self.reg.get_sp(), pc,
               self.mmu.read8(pc), self.mmu.read8(pc + 1), self.mmu.read8(pc + 2), self.mmu.read8(pc + 3));
   }
 }
@@ -112,8 +113,9 @@ impl CPU {
     // instrUsages[op]++;
 
     // interpreter::ops[op](this);
+    GBInterpreter::interpret_instruction(self, op);
 
-    self.print_state();
+    // self.print_state();
   }
 
   pub fn enable_interrupts(&mut self) {

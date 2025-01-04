@@ -1,27 +1,26 @@
-use crate::const_assert;
+pub struct MemoryMap<const START_ADDR: u16, const END_ADDR: u16>();
 
-pub struct MemoryMap<const startAddr: u16, const endAddr: u16>();
-
-impl<const startAddr: u16, const endAddr: u16> MemoryMap<startAddr, endAddr> {
-  const_assert!(startAddr < endAddr);
+impl<const START_ADDR: u16, const END_ADDR: u16> MemoryMap<START_ADDR, END_ADDR> {
+  // TODO: this assert
+  // const_assert!(START_ADDR < END_ADDR);
 
   pub const fn start() -> u16 {
-    startAddr
+    START_ADDR
   }
 
   pub const fn end() -> u16 {
-    endAddr
+    END_ADDR
   }
 
   pub const fn size() -> usize {
-    (endAddr - startAddr) as usize
+    (Self::end() - Self::start()) as usize
   }
 
   pub const fn contains(addr: u16) -> bool {
-    addr >= startAddr && addr < endAddr
+    addr >= START_ADDR && addr < END_ADDR
   }
 
-  pub const fn addr_is_below(addr: u16) -> bool {
-    addr < startAddr
-  }
+  // pub const fn addr_is_below(addr: u16) -> bool {
+  //   addr < START_ADDR
+  // }
 }

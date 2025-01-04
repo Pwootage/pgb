@@ -1,3 +1,4 @@
+
 pub struct GBHeader {
   vectors: [u8; 0x100],
   start: [u8; 4],
@@ -17,7 +18,9 @@ pub struct GBHeader {
   global_checksum: u16,
 }
 
-enum CartType {
+#[derive(Debug, PartialEq, Copy, Clone)]
+#[repr(u8)]
+pub enum CartType {
   RomOnly = 0x00,
   MBC1 = 0x01,
   MBC1Ram = 0x02,
@@ -47,9 +50,48 @@ enum CartType {
   HuC3 = 0xFE,
   HuC1RamBat = 0xFF,
 }
+impl TryFrom<u8> for CartType {
+  type Error = ();
 
-const BANK_SIZE: u16 = 0x4000;
-const SRAM_SIZE: u16 = 0x4000;
+  fn try_from(value: u8) -> Result<Self, Self::Error> {
+    // TODO: less dumb way of doing this... probably an enum crate
+    match value {
+      0x00 => Ok(CartType::RomOnly),
+      0x01 => Ok(CartType::MBC1),
+      0x02 => Ok(CartType::MBC1Ram),
+      0x03 => Ok(CartType::MBC1RamBatt),
+      0x05 => Ok(CartType::MBC2),
+      0x06 => Ok(CartType::MBC2RamBatt),
+      0x08 => Ok(CartType::RomRam),
+      0x09 => Ok(CartType::RomRamBatt),
+      0x0B => Ok(CartType::MMM01),
+      0x0C => Ok(CartType::MMM01Ram),
+      0x0D => Ok(CartType::MMM01RamBatt),
+      0x0F => Ok(CartType::MBC3TimerBatt),
+      0x10 => Ok(CartType::MBC3RamTimerBatt),
+      0x11 => Ok(CartType::MBC3),
+      0x12 => Ok(CartType::MBC3Ram),
+      0x13 => Ok(CartType::MBC3RamBattery),
+      0x19 => Ok(CartType::MBC5),
+      0x1A => Ok(CartType::MBC5Ram),
+      0x1B => Ok(CartType::MBC5RamBattery),
+      0x1C => Ok(CartType::MBC5Rumble),
+      0x1D => Ok(CartType::MBC5RamRumble),
+      0x1E => Ok(CartType::MBC5RamBatteryRumble),
+      0x20 => Ok(CartType::MBC6RamBat),
+      0x22 => Ok(CartType::MBC7RamBatAccel),
+      0xFC => Ok(CartType::PocketCam),
+      0xFD => Ok(CartType::BandaiTama5),
+      0xFE => Ok(CartType::HuC3),
+      0xFF => Ok(CartType::HuC1RamBat),
+      _ => Err(()),
+    }
+  }
+}
+
+
+const BANK_SIZE: usize = 0x4000;
+const SRAM_SIZE: usize = 0x4000;
 
 pub struct ROM {
   pub sram_enabled: bool,
@@ -57,10 +99,46 @@ pub struct ROM {
   pub rom_bank: u16,
   pub sram_bank: u8,
 
-  banks: Vec<[u8; BANK_SIZE as usize]>,
-  sram: [[u8; SRAM_SIZE as usize]; 4],
+  banks: Vec<[u8; BANK_SIZE]>,
+  sram: [[u8; SRAM_SIZE]; 4],
 
   pub cart_type: CartType,
+}
+
+impl ROM {
+  pub fn new(bytes: Vec<u8>) -> Self {
+    let mut banks: Vec<[u8; BANK_SIZE]> = Vec::new();
+    for i in( 0..bytes.len()).step_by(BANK_SIZE) {
+      let mut read = bytes.len() - i;
+      if read > BANK_SIZE {
+        read = BANK_SIZE;
+      }
+      let mut bank = [0; BANK_SIZE];
+      for j in 0..read {
+        bank[j] = bytes[i + j];
+      }
+      banks.push(bank);
+    }
+
+    let mut rom = ROM {
+      sram_enabled: false,
+      sram_mode: false,
+      rom_bank: 1,
+      sram_bank: 0,
+      banks,
+      sram: [[0; SRAM_SIZE]; 4], // TODO: persist this
+      cart_type: CartType::RomOnly,
+    };
+
+    let header = rom.header();
+    rom.cart_type = CartType::try_from(header.cart_type).unwrap(); // todo: error handling
+    rom
+  }
+
+  pub fn new_from_file(file: &str) -> Self {
+    let bytes = std::fs::read(file).unwrap();
+    ROM::new(bytes)
+  }
 }
 
 impl ROM {
@@ -124,10 +202,10 @@ impl ROM {
   }
 
   pub fn read(&self, offset: u16) -> u8 {
-    if offset < BANK_SIZE {
-      self.banks[0][offset]
+    if offset < BANK_SIZE as u16 {
+      self.banks[0][offset as usize]
     } else {
-      self.banks[self.rom_bank % self.banks.size()][offset - BANK_SIZE]
+      self.banks[self.rom_bank as usize % self.banks.len()][offset as usize - BANK_SIZE]
     }
   }
 
@@ -137,13 +215,13 @@ impl ROM {
       CartType::MBC1 | CartType::MBC1Ram | CartType::MBC1RamBatt => {
         if offset < 0x1FFF {
           self.sram_enabled = (value & 0xF) == 0xA;
-        } else if (offset < 0x3FFF) {
+        } else if offset < 0x3FFF {
           let mut new_bank = (value & 0x1F) as u16;
           if new_bank == 0 {
             new_bank = 1;
           }
           self.rom_bank = (self.rom_bank & 0xE0) | new_bank;
-        } else if (offset < 0x5FFF) {
+        } else if offset < 0x5FFF {
           let bank = value & 0x3;
           if self.sram_mode {
             self.sram_bank = bank;
@@ -184,13 +262,13 @@ impl ROM {
       | CartType::MBC3RamTimerBatt => {
         if offset < 0x1FFF {
           self.sram_enabled = (value & 0xF) == 0xA;
-        } else if (offset < 0x3FFF) {
+        } else if offset < 0x3FFF {
           let mut new_bank = (value & 0x7F) as u16;
           if new_bank == 0 {
             new_bank = 1;
           }
           self.rom_bank = new_bank;
-        } else if (offset < 0x5FFF) {
+        } else if offset < 0x5FFF {
           // TODO: ram bank/rgc register
         } else {
           // TODO clock
@@ -210,9 +288,9 @@ impl ROM {
             new_bank = 1;
           }
           self.rom_bank = (self.rom_bank & 0xFF00) | new_bank;
-        } else if (offset < 0x3FFF) {
+        } else if offset < 0x3FFF {
           let mut new_bank = value as u16;
-          if self.banks.size() < 256 {
+          if self.banks.len() < 256 {
             if new_bank == 0 {
               new_bank = 1;
             }
@@ -240,9 +318,9 @@ impl ROM {
       let bank = if self.sram_mode {
         0
       } else {
-        self.sram_bank % self.sram.len()
+        self.sram_bank as usize % self.sram.len()
       };
-      self.sram[bank][offset % self.sram[bank].len()]
+      self.sram[bank][offset as usize % self.sram[bank].len()]
     } else {
       0xFF
     }
@@ -253,9 +331,9 @@ impl ROM {
       let bank = if self.sram_mode {
         0
       } else {
-        self.sram_bank % self.sram.len()
+        self.sram_bank as usize % self.sram.len()
       };
-      self.sram[bank][offset % self.sram[bank].len()] = value;
+      self.sram[bank][offset as usize % self.sram[bank].len()] = value;
     }
   }
 }

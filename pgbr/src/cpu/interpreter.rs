@@ -1,4 +1,3 @@
-use crate::cpu::registers::GBRegisters;
 use crate::cpu::CPU;
 
 pub struct GBInterpreter {}
@@ -58,18 +57,16 @@ impl GBInterpreter {
           }
           3 => {
             // jr d
-            let addr = cpu
-              .reg
-              .get_pc()
-              .wrapping_add_signed(Self::get_d(cpu) as i16);
+            let d = Self::get_d(cpu) as i16;
+            let addr = cpu.reg.get_pc().wrapping_add_signed(d);
             Self::jump(cpu, addr);
           }
           4..=7 => {
             // jr cc[y-4], d
-            let addr = | cpu | cpu
-              .reg
-              .get_pc()
-              .wrapping_add_signed(Self::get_d(cpu) as i16);
+            let addr = | cpu: &mut CPU | {
+              let d = Self::get_d(cpu) as i16;
+              cpu.reg.get_pc().wrapping_add_signed(d)
+            };
             Self::jump_cc(cpu, instr.get_y() - 4, addr, 1);
           }
           _ => panic!("invalid y"),
@@ -80,7 +77,8 @@ impl GBInterpreter {
         match instr.get_q() {
           0 => {
             // ld rp[p], nn
-            Self::set_rp(cpu, instr.get_p(), Self::get_nn(cpu));
+            let v = Self::get_nn(cpu);
+            Self::set_rp(cpu, instr.get_p(), v);
           }
           1 => {
             // add hl, rp[p]
@@ -123,20 +121,24 @@ impl GBInterpreter {
             match instr.get_p() {
               0 => {
                 // ld a, (bc)
-                cpu.reg.set_a(cpu.read8(cpu.reg.get_bc()));
+                let v = cpu.read8(cpu.reg.get_bc());
+                cpu.reg.set_a(v);
               }
               1 => {
                 // ld a, (de)
-                cpu.reg.set_a(cpu.read8(cpu.reg.get_de()));
+                let v = cpu.read8(cpu.reg.get_de());
+                cpu.reg.set_a(v);
               }
               2 => {
                 // ld a, (hl+)
-                cpu.reg.set_a(cpu.read8(cpu.reg.get_hl()));
+                let v = cpu.read8(cpu.reg.get_hl());
+                cpu.reg.set_a(v);
                 cpu.reg.set_hl(cpu.reg.get_hl().wrapping_add(1));
               }
               3 => {
                 // ld a, (hl-)
-                cpu.reg.set_a(cpu.read8(cpu.reg.get_hl()));
+                let v = cpu.read8(cpu.reg.get_hl());
+                cpu.reg.set_a(v);
                 cpu.reg.set_hl(cpu.reg.get_hl().wrapping_sub(1));
               }
               _ => panic!("invalid p"),
@@ -187,7 +189,8 @@ impl GBInterpreter {
       }
       6 => { // 8 bit load immediate
         // ld r[y], n
-        Self::set_r(cpu, instr.get_y(), Self::get_n(cpu));
+        let v = Self::get_n(cpu);
+        Self::set_r(cpu, instr.get_y(), v);
       }
       7 => { // misc flag stuff
         todo!("uhoh, need to do flags")
@@ -302,10 +305,7 @@ impl GBInterpreter {
         match instr.get_y() {
           0..=3 => {
             // jp cc[y], nn
-            let addr = | cpu | cpu
-              .reg
-              .get_pc()
-              .wrapping_add_signed(Self::get_nn(cpu) as i16);
+            let addr = | cpu: &mut CPU | Self::get_nn(cpu);
             Self::jump_cc(cpu, instr.get_y(), addr, 2);
           }
           4 => {
@@ -321,12 +321,14 @@ impl GBInterpreter {
           6 => {
             // ld a, (0xFF00+c)
             let off = cpu.reg.get_c() as u16;
-            cpu.reg.set_a(cpu.read8(0xFF00 | off));
+            let v = cpu.read8(0xFF00 | off);
+            cpu.reg.set_a(v);
           }
           7 => {
             // ld a, (nn)
             let off = Self::get_nn(cpu);
-            cpu.reg.set_a(cpu.read8(off));
+            let v = cpu.read8(off);
+            cpu.reg.set_a(v);
           }
           _ => panic!("invalid y")
         }
@@ -375,7 +377,7 @@ impl GBInterpreter {
         match instr.get_y() {
           0..=3 => {
             // call cc[y], nn
-            let addr = | cpu | Self::get_nn(cpu);
+            let addr = | cpu: &mut CPU | Self::get_nn(cpu);
             Self::call_cc(cpu, instr.get_y(), addr, 1);
           }
           4..=7 => {
@@ -419,7 +421,7 @@ impl GBInterpreter {
       7 => {
         // rst
         Self::push(cpu, cpu.reg.get_pc());
-        cpu.reg.set_pc(instr.get_y() * 8);
+        cpu.reg.set_pc((instr.get_y() * 8) as u16);
       }
       _ => panic!("invalid z")
     }
@@ -518,10 +520,22 @@ impl GBInterpreter {
 
   fn jump_cc(cpu: &mut CPU, cc: u8, addr: fn(&mut CPU) -> u16, skip_on_false: u16) {
     match cc {
-      0 if !cpu.reg.get_zero_flag() => Self::jump(cpu, addr(cpu)),
-      1 if cpu.reg.get_zero_flag() => Self::jump(cpu, addr(cpu)),
-      2 if !cpu.reg.get_carry_flag() => Self::jump(cpu, addr(cpu)),
-      3 if cpu.reg.get_zero_flag() => Self::jump(cpu, addr(cpu)),
+      0 if !cpu.reg.get_zero_flag() => {
+        let v = addr(cpu);
+        Self::jump(cpu, v)
+      },
+      1 if cpu.reg.get_zero_flag() => {
+        let v = addr(cpu);
+        Self::jump(cpu, v)
+      },
+      2 if !cpu.reg.get_carry_flag() => {
+        let v = addr(cpu);
+        Self::jump(cpu, v)
+      },
+      3 if cpu.reg.get_zero_flag() => {
+        let v = addr(cpu);
+        Self::jump(cpu, v)
+      },
       _ => {
         // don't jump
         Self::jump(cpu, cpu.reg.get_pc().wrapping_add(skip_on_false))
@@ -549,17 +563,29 @@ impl GBInterpreter {
   }
 
   fn call(cpu: &mut CPU, addr: u16) {
-    let pc = cpu.reg.get_pc().wrapping_add(2);
+    let pc = cpu.reg.get_pc();
     Self::jump(cpu, addr);
     Self::push(cpu, pc);
   }
 
   fn call_cc(cpu: &mut CPU, cc: u8, addr: fn(&mut CPU) -> u16, skip_on_false: u16) {
     match cc {
-      0 if !cpu.reg.get_zero_flag() => Self::call(cpu, addr(cpu)),
-      1 if cpu.reg.get_zero_flag() => Self::call(cpu, addr(cpu)),
-      2 if !cpu.reg.get_carry_flag() => Self::call(cpu, addr(cpu)),
-      3 if cpu.reg.get_zero_flag() => Self::call(cpu, addr(cpu)),
+      0 if !cpu.reg.get_zero_flag() => {
+        let v = addr(cpu);
+        Self::call(cpu, v)
+      },
+      1 if cpu.reg.get_zero_flag() => {
+        let v = addr(cpu);
+        Self::call(cpu, v)
+      },
+      2 if !cpu.reg.get_carry_flag() => {
+        let v = addr(cpu);
+        Self::call(cpu, v)
+      },
+      3 if cpu.reg.get_zero_flag() => {
+        let v = addr(cpu);
+        Self::call(cpu, v)
+      },
       _ => {
         // don't jump
         Self::jump(cpu, cpu.reg.get_pc().wrapping_add(skip_on_false))
@@ -602,7 +628,7 @@ impl GBInterpreter {
           3 if cpu.reg.get_carry_flag() => 1,
           _ => 0,
         };
-        let diff = a as u16.wrapping_sub(v as u16).wrapping_sub(c as u16);
+        let diff = (a as u16).wrapping_sub(v as u16).wrapping_sub(c as u16);
         let halfa = a & 0xF;
         let halfv = v * 0xF;
         cpu.reg.set_zero_flag(diff == 0);
@@ -645,7 +671,7 @@ impl GBInterpreter {
         // cp
         // cp a,
         let halfa = a & 0xF;
-        let halfv = v * 0xF;
+        let halfv = v.wrapping_mul(0xF);
         cpu.reg.set_zero_flag(a == v);
         cpu.reg.set_subtract_flag(true);
         cpu.reg.set_half_carry_flag(halfv > halfa);

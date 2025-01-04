@@ -83,6 +83,8 @@ copyString:
     ld a, [de]
     ld [hli], a
     inc de
+.printToSerial
+    ld [$FF01], a ; Write the byte to the serial port
     and a ; Check if the byte we just copied is zero
     jr nz, .copyStringLoop ; Continue if it's not
     ret

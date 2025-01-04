@@ -3,4 +3,4 @@ project(pgb)
 
 
 add_subdirectory(libpgb)
-add_subdirectory(pgb-qt)
+#add_subdirectory(pgb-qt)
