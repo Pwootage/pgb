@@ -333,18 +333,93 @@ impl GBInterpreter {
       }
       3 => {
         // interrupts, jumps, cb prefix
+        match instr.get_y() {
+          0 => {
+            // jp nn
+            let addr = cpu.pc_read16();
+            Self::jump(cpu, addr);
+          }
+          1 => {
+            // cb prefix
+            todo!("no cb yet");
+          }
+          2 => {
+            // invalid
+            cpu.freeze();
+          }
+          3 => {
+            // invalid
+            cpu.freeze();
+          }
+          4 => {
+            // invalid
+            cpu.freeze();
+          }
+          5 => {
+            // invalid
+            cpu.freeze();
+          }
+          6 => {
+            // di
+            cpu.disable_interrupts();
+          }
+          7 => {
+            // ei
+            cpu.enable_interrupts();
+          }
+          _ => panic!("invalid y")
+        }
       }
       4 => {
         // conditional call
+        match instr.get_y() {
+          0..=3 => {
+            // call cc[y], nn
+            let addr = | cpu | Self::get_nn(cpu);
+            Self::call_cc(cpu, instr.get_y(), addr, 1);
+          }
+          4..=7 => {
+            // invalid
+            cpu.freeze()
+          }
+          _ => panic!("invalid y")
+        }
       }
       5 => {
-      // push, unconditional call
+        // push, unconditional call
+        match instr.get_q() {
+          0 => {
+            // push rp2[p]
+            let v = Self::get_rp2(cpu, instr.get_p());
+            cpu.add_clock(4);
+            Self::push(cpu, v);
+          }
+          1 => {
+            match instr.get_p() {
+              0 => {
+                // call nn
+                let addr = Self::get_nn(cpu);
+                Self::call(cpu, addr);
+              }
+              1..=3 => {
+                // invalid
+                cpu.freeze();
+              }
+              _ => panic!("invalid p")
+            }
+          }
+          _ => panic!("invalid q")
+        }
       }
       6 => {
-        // alu reg imm
+        // alu[y] n
+        let n = Self::get_n(cpu);
+        Self::alu(cpu, instr.get_y(), n);
       }
       7 => {
         // rst
+        Self::push(cpu, cpu.reg.get_pc());
+        cpu.reg.set_pc(instr.get_y() * 8);
       }
       _ => panic!("invalid z")
     }
@@ -471,6 +546,30 @@ impl GBInterpreter {
         // don't jump
       }
     }
+  }
+
+  fn call(cpu: &mut CPU, addr: u16) {
+    let pc = cpu.reg.get_pc().wrapping_add(2);
+    Self::jump(cpu, addr);
+    Self::push(cpu, pc);
+  }
+
+  fn call_cc(cpu: &mut CPU, cc: u8, addr: fn(&mut CPU) -> u16, skip_on_false: u16) {
+    match cc {
+      0 if !cpu.reg.get_zero_flag() => Self::call(cpu, addr(cpu)),
+      1 if cpu.reg.get_zero_flag() => Self::call(cpu, addr(cpu)),
+      2 if !cpu.reg.get_carry_flag() => Self::call(cpu, addr(cpu)),
+      3 if cpu.reg.get_zero_flag() => Self::call(cpu, addr(cpu)),
+      _ => {
+        // don't jump
+        Self::jump(cpu, cpu.reg.get_pc().wrapping_add(skip_on_false))
+      }
+    }
+  }
+
+  fn push(cpu: &mut CPU, value: u16) {
+    cpu.write16(cpu.reg.get_sp().wrapping_sub(2), value);
+    cpu.reg.add_sp(-2);
   }
 
   fn alu(cpu: &mut CPU, op: u8, value: u8) {
