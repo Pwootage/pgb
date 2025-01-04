@@ -48,8 +48,8 @@ impl GBInterpreter {
           }
           1 => {
             // ld (nn), sp
-            let v = Self::get_nn(cpu);
-            cpu.reg.set_sp(v);
+            let addr = Self::get_nn(cpu);
+            cpu.write16(addr, cpu.reg.get_sp());
           }
           2 => {
             // stop
@@ -82,11 +82,15 @@ impl GBInterpreter {
           }
           1 => {
             // add hl, rp[p]
-            let val = cpu
-              .reg
-              .get_hl()
-              .wrapping_add(Self::get_rp(cpu, instr.get_p()));
-            cpu.reg.set_hl(val);
+            let hl =  cpu.reg.get_hl();
+            let v = Self::get_rp(cpu, instr.get_p());
+            let add = hl.wrapping_add(v);
+            let half_add = (hl & 0xFFF) + (v & 0xFFF);
+            cpu.reg.set_subtract_flag(false);
+            cpu.reg.set_half_carry_flag(half_add > 0xFFF);
+            cpu.reg.set_carry_flag(add < hl);
+            cpu.reg.set_hl(add);
+            cpu.add_clock(4);
           }
           _ => panic!("invalid q"),
         }
@@ -183,7 +187,7 @@ impl GBInterpreter {
         let half_res = (r & 0x0F).wrapping_sub(1);
         Self::set_r(cpu, instr.get_y(), res);
         cpu.reg.set_zero_flag(res == 0);
-        cpu.reg.set_subtract_flag(false);
+        cpu.reg.set_subtract_flag(true);
         // TODO: verify this; it was checking > 0xF0 before, which seems wrong
         cpu.reg.set_half_carry_flag(half_res > 0xF);
       }
@@ -193,7 +197,91 @@ impl GBInterpreter {
         Self::set_r(cpu, instr.get_y(), v);
       }
       7 => { // misc flag stuff
-        todo!("uhoh, need to do flags")
+        match instr.get_y() {
+          0 => {
+            // rlca
+            let a = cpu.reg.get_a();
+            cpu.reg.set_zero_flag(false);
+            cpu.reg.set_subtract_flag(false);
+            cpu.reg.set_half_carry_flag(false);
+            cpu.reg.set_carry_flag((a & 0x80) != 0);
+            cpu.reg.set_a((a << 1) | (a >> 7));
+          }
+          1 => {
+            // rrca
+            let a = cpu.reg.get_a();
+            cpu.reg.set_zero_flag(false);
+            cpu.reg.set_subtract_flag(false);
+            cpu.reg.set_half_carry_flag(false);
+            cpu.reg.set_carry_flag((a & 0x1) != 0);
+            cpu.reg.set_a(a.rotate_right(1));
+          }
+          2 => {
+            // rla
+            let a = cpu.reg.get_a();
+            let carry = if cpu.reg.get_carry_flag() { 1 } else { 0 };
+            cpu.reg.set_zero_flag(false);
+            cpu.reg.set_subtract_flag(false);
+            cpu.reg.set_half_carry_flag(false);
+            cpu.reg.set_carry_flag((a & 0x80) != 0);
+            cpu.reg.set_a((a << 1) | carry);
+          }
+          3 => {
+            // rra
+            let a = cpu.reg.get_a();
+            let carry = if cpu.reg.get_carry_flag() { 0x80 } else { 0 };
+            cpu.reg.set_zero_flag(false);
+            cpu.reg.set_subtract_flag(false);
+            cpu.reg.set_half_carry_flag(false);
+            cpu.reg.set_carry_flag((a & 0x1) != 0);
+            cpu.reg.set_a((a >> 1) | carry);
+          }
+          4 => {
+            // daa
+            let a = cpu.reg.get_a();
+            let mut res = cpu.reg.get_a() as i16;
+            if cpu.reg.get_subtract_flag() {
+              if cpu.reg.get_half_carry_flag() {
+                res = res.wrapping_sub(0x06) & 0xFF;
+              }
+              if cpu.reg.get_carry_flag() {
+                res = res.wrapping_sub(0x60);
+              }
+            } else {
+              if cpu.reg.get_half_carry_flag() || (res & 0xF) > 0x9 {
+                res = res.wrapping_add(0x06);
+              }
+              if cpu.reg.get_carry_flag() || res > 0x9F {
+                res = res.wrapping_add(0x60);
+              }
+            }
+            cpu.reg.set_half_carry_flag(false);
+            cpu.reg.set_zero_flag((res & 0xFF) == 0);
+            if res & 0x100 != 0 {
+              cpu.reg.set_carry_flag(true);
+            }
+            cpu.reg.set_a(res as u8);
+          }
+          5 => {
+            // cpl
+            cpu.reg.set_a(!cpu.reg.get_a());
+            cpu.reg.set_subtract_flag(true);
+            cpu.reg.set_half_carry_flag(true);
+          }
+          6 => {
+            // scf
+            cpu.reg.set_carry_flag(true);
+            cpu.reg.set_half_carry_flag(false);
+            cpu.reg.set_subtract_flag(false);
+          }
+          7 => {
+            // ccf
+            cpu.reg.set_carry_flag(!cpu.reg.get_carry_flag());
+            cpu.reg.set_half_carry_flag(false);
+            cpu.reg.set_subtract_flag(false);
+          }
+          _ => panic!("invalid y"),
+        }
       }
       _ => panic!("invalid z"),
     }
@@ -235,15 +323,17 @@ impl GBInterpreter {
             // add sp, d
             let off = Self::get_d(cpu) as i16;
             let sp = cpu.reg.get_sp();
-            let (add, overflow) = sp.overflowing_add_signed(off);
-            let half_add = (sp & 0xFF) + (off & 0xFF) as u16;
+            let add = sp.wrapping_add_signed(off);
+            let half_add = (sp & 0xF) + (off & 0xF) as u16;
+            let byte_add = (sp & 0xFF).wrapping_add_signed(off & 0xFF);
             cpu.reg.set_zero_flag(false);
             cpu.reg.set_subtract_flag(false);
-            cpu.reg.set_half_carry_flag(half_add > 0xFF);
-            cpu.reg.set_carry_flag(overflow);
+            cpu.reg.set_half_carry_flag(half_add > 0xF);
+            cpu.reg.set_carry_flag(byte_add > 0xFF);
             cpu.reg.set_sp(add);
           }
           6 => {
+            // ldh a, n
             // ld a, (0xFF00 + n)
             let off = Self::get_n(cpu) as u16;
             let v = cpu.read8(0xFF00 | off);
@@ -253,12 +343,13 @@ impl GBInterpreter {
             // ld hl, sp + d
             let off = Self::get_d(cpu) as i16;
             let sp = cpu.reg.get_sp();
-            let (add, overflow) = sp.overflowing_add_signed(off);
-            let half_add = (sp & 0xFF) + (off & 0xFF) as u16;
+            let add = sp.wrapping_add_signed(off);
+            let half_add = (sp & 0xF) + (off & 0xF) as u16;
+            let byte_add = (sp & 0xFF).wrapping_add_signed(off & 0xFF);
             cpu.reg.set_zero_flag(false);
             cpu.reg.set_subtract_flag(false);
-            cpu.reg.set_half_carry_flag(half_add > 0xFF);
-            cpu.reg.set_carry_flag(overflow);
+            cpu.reg.set_half_carry_flag(half_add > 0xF);
+            cpu.reg.set_carry_flag(byte_add > 0xFF);
             cpu.reg.set_hl(add);
           }
           _ => panic!("invalid y")
@@ -343,7 +434,7 @@ impl GBInterpreter {
           }
           1 => {
             // cb prefix
-            todo!("no cb yet");
+            Self::interpret_cb(cpu);
           }
           2 => {
             // invalid
@@ -378,7 +469,7 @@ impl GBInterpreter {
           0..=3 => {
             // call cc[y], nn
             let addr = | cpu: &mut CPU | Self::get_nn(cpu);
-            Self::call_cc(cpu, instr.get_y(), addr, 1);
+            Self::call_cc(cpu, instr.get_y(), addr, 2);
           }
           4..=7 => {
             // invalid
@@ -424,6 +515,45 @@ impl GBInterpreter {
         cpu.reg.set_pc((instr.get_y() * 8) as u16);
       }
       _ => panic!("invalid z")
+    }
+  }
+
+  fn interpret_cb(cpu: &mut CPU) {
+    let op = GBInstruction(cpu.pc_read8());
+    match op.get_x() {
+      0 => {
+        // roll/shift reg/memory
+        let v = Self::get_r(cpu, op.get_z());
+        let v = Self::rot(cpu, op.get_y(), v);
+        Self::set_r(cpu, op.get_z(), v);
+      }
+      1 => {
+        // test bit
+        // bit y, r[z]
+        let bit = op.get_y();
+        let v = Self::get_r(cpu, op.get_z());
+        let mask = 1 << bit;
+        cpu.reg.set_zero_flag((v & mask) == 0);
+        cpu.reg.set_subtract_flag(false);
+        cpu.reg.set_half_carry_flag(true);
+      }
+      2 => {
+        // reset bit
+        // res y, r[z]
+        let bit = op.get_y();
+        let v = Self::get_r(cpu, op.get_z());
+        let mask = !(1 << bit);
+        Self::set_r(cpu, op.get_z(), v & mask);
+      }
+      3 => {
+        // set bit
+        // set y, r[z]
+        let bit = op.get_y();
+        let v = Self::get_r(cpu, op.get_z());
+        let mask = (1 << bit);
+        Self::set_r(cpu, op.get_z(), v | mask);
+      }
+      _ => panic!("invalid x")
     }
   }
 }
@@ -532,7 +662,7 @@ impl GBInterpreter {
         let v = addr(cpu);
         Self::jump(cpu, v)
       },
-      3 if cpu.reg.get_zero_flag() => {
+      3 if cpu.reg.get_carry_flag() => {
         let v = addr(cpu);
         Self::jump(cpu, v)
       },
@@ -555,7 +685,7 @@ impl GBInterpreter {
       0 if !cpu.reg.get_zero_flag() => Self::ret(cpu),
       1 if cpu.reg.get_zero_flag() => Self::ret(cpu),
       2 if !cpu.reg.get_carry_flag() => Self::ret(cpu),
-      3 if cpu.reg.get_zero_flag() => Self::ret(cpu),
+      3 if cpu.reg.get_carry_flag() => Self::ret(cpu),
       _ => {
         // don't jump
       }
@@ -582,7 +712,7 @@ impl GBInterpreter {
         let v = addr(cpu);
         Self::call(cpu, v)
       },
-      3 if cpu.reg.get_zero_flag() => {
+      3 if cpu.reg.get_carry_flag() => {
         let v = addr(cpu);
         Self::call(cpu, v)
       },
@@ -605,20 +735,17 @@ impl GBInterpreter {
       0 | 1 => {
         // 0: add a,
         // 1: adc a,
-        // 2: sub
-        // 2: sub a,
-        // 3: sbc a,
         let c: u8 = match op {
           1 if cpu.reg.get_carry_flag() => 1,
           _ => 0,
         };
-        let sum = a + v + c;
+        let sum = a as u16 + v as u16 + c as u16;
         let half_sum = (a & 0xF) + (v & 0xF) + c;
-        cpu.reg.set_zero_flag(sum == 0);
+        cpu.reg.set_zero_flag((sum & 0xFF) == 0);
         cpu.reg.set_subtract_flag(false);
         cpu.reg.set_half_carry_flag(half_sum > 0xF);
-        cpu.reg.set_carry_flag(sum < a - c); // TODO: verify this
-        cpu.reg.set_a(sum);
+        cpu.reg.set_carry_flag(sum > 0xFF);
+        cpu.reg.set_a(sum as u8);
       }
       2 | 3 => {
         // 2: sub
@@ -629,12 +756,10 @@ impl GBInterpreter {
           _ => 0,
         };
         let diff = (a as u16).wrapping_sub(v as u16).wrapping_sub(c as u16);
-        let halfa = a & 0xF;
-        let halfv = v * 0xF;
-        cpu.reg.set_zero_flag(diff == 0);
+        cpu.reg.set_zero_flag((diff & 0xFF) == 0);
         cpu.reg.set_subtract_flag(true);
-        cpu.reg.set_half_carry_flag(halfv > halfa + c);
-        cpu.reg.set_carry_flag(v > a + c);
+        cpu.reg.set_half_carry_flag((a & 0xF) < (v & 0xF) + c);
+        cpu.reg.set_carry_flag(diff > 0xFF);
         cpu.reg.set_a(diff as u8);
       }
       4 => {
@@ -671,7 +796,7 @@ impl GBInterpreter {
         // cp
         // cp a,
         let halfa = a & 0xF;
-        let halfv = v.wrapping_mul(0xF);
+        let halfv = v &0xF;
         cpu.reg.set_zero_flag(a == v);
         cpu.reg.set_subtract_flag(true);
         cpu.reg.set_half_carry_flag(halfv > halfa);
@@ -680,5 +805,95 @@ impl GBInterpreter {
       _ => panic!("bad alu op")
     }
 
+  }
+
+  fn rot(cpu: &mut CPU, op: u8, v: u8) -> u8 {
+    match op {
+      0 => {
+        // rlc
+        let carry = (v & 0x80) >> 7;
+        let res = (v << 1) | carry;
+        cpu.reg.set_zero_flag(res == 0);
+        cpu.reg.set_subtract_flag(false);
+        cpu.reg.set_half_carry_flag(false);
+        cpu.reg.set_carry_flag(carry != 0);
+        res
+      }
+      1 => {
+        // rrc
+        let carry = (v & 0x1) << 7;
+        let res = (v >> 1) | carry;
+        cpu.reg.set_zero_flag(res == 0);
+        cpu.reg.set_subtract_flag(false);
+        cpu.reg.set_half_carry_flag(false);
+        cpu.reg.set_carry_flag(carry != 0);
+        res
+      }
+      2 => {
+        // rl
+        let old_carry = if cpu.reg.get_carry_flag() { 1 } else { 0 };
+        let carry = (v & 0x80) != 0;
+        let res = (v << 1) | old_carry;
+        cpu.reg.set_zero_flag(res == 0);
+        cpu.reg.set_subtract_flag(false);
+        cpu.reg.set_half_carry_flag(false);
+        cpu.reg.set_carry_flag(carry);
+        res
+      }
+      3 => {
+        // rr
+        let old_carry = if cpu.reg.get_carry_flag() { 0x80 } else { 0 };
+        let carry = (v & 0x1) != 0;
+        let res = (v >> 1) | old_carry;
+        cpu.reg.set_zero_flag(res == 0);
+        cpu.reg.set_subtract_flag(false);
+        cpu.reg.set_half_carry_flag(false);
+        cpu.reg.set_carry_flag(carry);
+        res
+      }
+      4 => {
+        // sla
+        let carry = v & 0x80;
+        let res = v << 1;
+        cpu.reg.set_zero_flag(res == 0);
+        cpu.reg.set_subtract_flag(false);
+        cpu.reg.set_half_carry_flag(false);
+        cpu.reg.set_carry_flag(carry != 0);
+        res
+      }
+      5 => {
+        // sra
+        let carry = v & 0x1;
+        let msb = v & 0x80;
+        let res = (v >> 1) | msb;
+        cpu.reg.set_zero_flag(res == 0);
+        cpu.reg.set_subtract_flag(false);
+        cpu.reg.set_half_carry_flag(false);
+        cpu.reg.set_carry_flag(carry != 0);
+        res
+      }
+      6 => {
+        // swap
+        let high = v & 0xF0;
+        let low = v & 0x0F;
+        let res = (high >> 4) | (low << 4);
+        cpu.reg.set_zero_flag(res == 0);
+        cpu.reg.set_subtract_flag(false);
+        cpu.reg.set_half_carry_flag(false);
+        cpu.reg.set_carry_flag(false);
+        res
+      }
+      7 => {
+        // srl
+        let carry = v & 1;
+        let res = v >> 1;
+        cpu.reg.set_zero_flag(res == 0);
+        cpu.reg.set_subtract_flag(false);
+        cpu.reg.set_half_carry_flag(false);
+        cpu.reg.set_carry_flag(carry != 0);
+        res
+      }
+      _ => panic!("bad rot op")
+    }
   }
 }

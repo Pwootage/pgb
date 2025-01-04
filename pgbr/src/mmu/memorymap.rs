@@ -17,7 +17,7 @@ impl<const START_ADDR: u16, const END_ADDR: u16> MemoryMap<START_ADDR, END_ADDR>
   }
 
   pub const fn contains(addr: u16) -> bool {
-    addr >= START_ADDR && addr < END_ADDR
+    addr >= START_ADDR && addr <= END_ADDR
   }
 
   // pub const fn addr_is_below(addr: u16) -> bool {

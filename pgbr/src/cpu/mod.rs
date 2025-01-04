@@ -46,14 +46,18 @@ impl CPU {
   }
 
   pub fn print_state(&self) {
+    println!("{}", self.get_state());
+  }
+
+  pub fn get_state(&self) -> String {
     // format for gbdoctor:
     // A:00 F:11 B:22 C:33 D:44 E:55 H:66 L:77 SP:8888 PC:9999 PCMEM:AA,BB,CC,DD
     let pc = self.reg.get_pc();
-    println!("A:{:02X} F:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X}",
+    format!("A:{:02X} F:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X}",
               self.reg.get_a(), self.reg.get_f(), self.reg.get_b(), self.reg.get_c(),
               self.reg.get_d(), self.reg.get_e(), self.reg.get_h(), self.reg.get_l(),
               self.reg.get_sp(), pc,
-              self.mmu.read8(pc), self.mmu.read8(pc + 1), self.mmu.read8(pc + 2), self.mmu.read8(pc + 3));
+              self.mmu.read8(pc), self.mmu.read8(pc + 1), self.mmu.read8(pc + 2), self.mmu.read8(pc + 3))
   }
 }
 

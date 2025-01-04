@@ -202,7 +202,7 @@ impl MMU {
       }
     } else if WRAM0::contains(addr) {
       //WRAM0
-      self.wram[0][(addr - WRAMX::start()) as usize % self.wram[0].len()] = value;
+      self.wram[0][(addr - WRAM0::start()) as usize % self.wram[0].len()] = value;
     } else if WRAMX::contains(addr) {
       //WRAMX
       let bank = if self.model.has_banked_ram() {
@@ -324,7 +324,8 @@ impl MMU {
         self.scroll_y
       }
       0xFF44 => { // Scan line/LY
-        self.gpu_line
+        // self.gpu_line
+        0x90 // todo: remove this when the gpu is implemented
       }
       0xFF45 => { // Scan line compare/LY compare/LYC
         self.lyc_compare
