@@ -178,8 +178,8 @@ impl GBRegisters {
     self.pc = value;
   }
 
-  pub fn add_pc(&mut self, value: u16) {
-    self.set_pc(self.pc.wrapping_add(value));
+  pub fn add_pc(&mut self, value: i16) {
+    self.set_pc(self.pc.wrapping_add_signed(value));
   }
 
   // flags

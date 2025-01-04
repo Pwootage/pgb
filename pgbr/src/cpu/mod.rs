@@ -15,9 +15,11 @@ pub struct CPU {
 
   pub reg: GBRegisters,
 
-  clock: u64,
-  last_clock_m: u16,
-  last_clock_t: u16,
+  halted: bool,
+  halt_bug: bool,
+  // clock: u64,
+  // last_clock_m: u16,
+  // last_clock_t: u16,
 }
 // general methods
 impl CPU {
@@ -25,9 +27,8 @@ impl CPU {
     let mut res = CPU {
       mmu,
       reg: GBRegisters::new(),
-      clock: 0,
-      last_clock_m: 0,
-      last_clock_t: 0,
+      halted: false,
+      halt_bug: false,
     };
 
     let init_reg = match res.mmu.model {
@@ -65,11 +66,11 @@ impl CPU {
 impl CPU {
   // clock
   pub fn get_clock(&self) -> u64 {
-    self.clock
+    self.mmu.get_clock()
   }
 
-  pub fn add_clock(&mut self, value: u64) {
-    self.clock += value;
+  pub fn add_clock(&mut self, value: u8) {
+    self.mmu.add_clock(value);
   }
 }
 
@@ -112,14 +113,42 @@ impl CPU {
 
 // emulate instructions
 impl CPU {
-  pub fn emulate_instruction(&mut self) {
+  /** true if we actually executed an instruction */
+  pub fn emulate_instruction(&mut self) -> bool {
+    // check for interrupts
+    let requested_interrupts = self.mmu.get_requested_and_enabled_interrupts();
+    // find the lowest bit set
+    let interrupt = requested_interrupts.trailing_zeros();
+    if interrupt < 5 {
+      self.halted = false;
+      if self.mmu.interrupts_enabled {
+        self.mmu.clear_interrupt((1 << interrupt) as u8);
+        self.mmu.interrupts_enabled = false;
+
+        GBInterpreter::push(self, self.reg.get_pc());
+        // jump to the interrupt handler
+        self.reg.set_pc(0x40 + (interrupt as u16) * 8);
+        // TODO: maybe add some cycles here, it should take 20 cycles total
+      }
+    }
+
+    if self.halted {
+      self.add_clock(4);
+      return false;
+    }
+
     let op = self.pc_read8();
+    if self.halt_bug {
+      self.halt_bug = false;
+      self.reg.add_pc(-1);
+    }
     // instrUsages[op]++;
 
     // interpreter::ops[op](this);
     GBInterpreter::interpret_instruction(self, op);
 
     // self.print_state();
+    true
   }
 
   pub fn enable_interrupts(&mut self) {
@@ -128,6 +157,20 @@ impl CPU {
 
   pub fn disable_interrupts(&mut self) {
     self.mmu.interrupts_enabled = false;
+  }
+
+  pub fn halt(&mut self) {
+    if self.mmu.interrupts_enabled {
+      self.halted = true;
+    } else {
+      if self.mmu.interrupt_enable & self.mmu.interrupt_flag & 0x1F == 0 {
+        self.halted = true;
+      } else {
+        // halt bug
+        self.halted = false;
+        self.halt_bug = true;
+      }
+    }
   }
 
   pub fn freeze(&mut self) {

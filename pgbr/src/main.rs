@@ -13,7 +13,6 @@ macro_rules! const_assert {
 }
 
 fn main() {
-  let log = false;
 
   // let rom = rom::ROM::new_from_file("../testRoms/basic_tests/build/test.gb");
   let rom = rom::ROM::new_from_file("../testRoms/blargg/cpu_instrs/cpu_instrs.gb");
@@ -36,17 +35,14 @@ fn main() {
   let state = cpu.get_state();
   writeln!(stream, "{}", state).unwrap();
 
-  for i in 1..=100_000_000 {
-    // if (i % 1_000_000) == 0 {
-    //   println!("{}M", i / 1_000_000);
-    // }
-    // if cpu.reg.get_pc() == 0x020C {
-    //   print!("breakpoint");
-    // }
-    cpu.emulate_instruction();
-    if log {
+  let log = false;
+  let mut i = 0usize;
+  while i < 10_000_000 {
+    let executed = cpu.emulate_instruction();
+    if log && executed {
       let state = cpu.get_state();
       writeln!(stream, "{}", state).unwrap();
+      i+=1;
     }
   }
   stream.flush().unwrap();

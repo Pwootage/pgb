@@ -34,7 +34,7 @@ impl GBInterpreter {
       1 => Self::interpret_block1(cpu, instr),
       2 => Self::interpret_block2(cpu, instr),
       3 => Self::interpret_block3(cpu, instr),
-      _ => panic!("invalid x"),
+      _ => unreachable!(),
     }
   }
 
@@ -69,7 +69,7 @@ impl GBInterpreter {
             };
             Self::jump_cc(cpu, instr.get_y() - 4, addr, 1);
           }
-          _ => panic!("invalid y"),
+          _ => unreachable!(),
         }
       }
       1 => {
@@ -92,7 +92,7 @@ impl GBInterpreter {
             cpu.reg.set_hl(add);
             cpu.add_clock(4);
           }
-          _ => panic!("invalid q"),
+          _ => unreachable!(),
         }
       }
       2 => {
@@ -118,7 +118,7 @@ impl GBInterpreter {
                 cpu.write8(cpu.reg.get_hl(), cpu.reg.get_a());
                 cpu.reg.set_hl(cpu.reg.get_hl().wrapping_sub(1));
               }
-              _ => panic!("invalid p"),
+              _ => unreachable!(),
             }
           }
           1 => {
@@ -145,10 +145,10 @@ impl GBInterpreter {
                 cpu.reg.set_a(v);
                 cpu.reg.set_hl(cpu.reg.get_hl().wrapping_sub(1));
               }
-              _ => panic!("invalid p"),
+              _ => unreachable!(),
             }
           }
-          _ => panic!("invalid q"),
+          _ => unreachable!(),
         }
       }
       3 => {
@@ -166,7 +166,7 @@ impl GBInterpreter {
             Self::set_rp(cpu, instr.get_p(), r.wrapping_sub(1));
             cpu.add_clock(4);
           }
-          _ => panic!("invalid q"),
+          _ => unreachable!(),
         }
       }
       4 => { // 8 bit increment
@@ -238,7 +238,6 @@ impl GBInterpreter {
           }
           4 => {
             // daa
-            let a = cpu.reg.get_a();
             let mut res = cpu.reg.get_a() as i16;
             if cpu.reg.get_subtract_flag() {
               if cpu.reg.get_half_carry_flag() {
@@ -280,10 +279,10 @@ impl GBInterpreter {
             cpu.reg.set_half_carry_flag(false);
             cpu.reg.set_subtract_flag(false);
           }
-          _ => panic!("invalid y"),
+          _ => unreachable!(),
         }
       }
-      _ => panic!("invalid z"),
+      _ => unreachable!(),
     }
   }
 
@@ -292,7 +291,7 @@ impl GBInterpreter {
     let y = instr.get_y();
     let z = instr.get_z();
     if y == 6 && z == 6 {
-      todo!("HALT IN THE NAME OF LOVE")
+      cpu.halt();
     }
     let v = Self::get_r(cpu, z);
     Self::set_r(cpu, y, v);
@@ -352,7 +351,7 @@ impl GBInterpreter {
             cpu.reg.set_carry_flag(byte_add > 0xFF);
             cpu.reg.set_hl(add);
           }
-          _ => panic!("invalid y")
+          _ => unreachable!()
         }
       }
       1 => {
@@ -385,10 +384,10 @@ impl GBInterpreter {
                 cpu.reg.set_sp(cpu.reg.get_hl());
                 cpu.add_clock(4);
               }
-              _ => panic!("invalid p")
+              _ => unreachable!()
             }
           }
-          _ => panic!("invalid q")
+          _ => unreachable!()
         }
       }
       2 => {
@@ -421,7 +420,7 @@ impl GBInterpreter {
             let v = cpu.read8(off);
             cpu.reg.set_a(v);
           }
-          _ => panic!("invalid y")
+          _ => unreachable!()
         }
       }
       3 => {
@@ -460,7 +459,7 @@ impl GBInterpreter {
             // ei
             cpu.enable_interrupts();
           }
-          _ => panic!("invalid y")
+          _ => unreachable!()
         }
       }
       4 => {
@@ -475,7 +474,7 @@ impl GBInterpreter {
             // invalid
             cpu.freeze()
           }
-          _ => panic!("invalid y")
+          _ => unreachable!()
         }
       }
       5 => {
@@ -498,10 +497,10 @@ impl GBInterpreter {
                 // invalid
                 cpu.freeze();
               }
-              _ => panic!("invalid p")
+              _ => unreachable!()
             }
           }
-          _ => panic!("invalid q")
+          _ => unreachable!()
         }
       }
       6 => {
@@ -514,7 +513,7 @@ impl GBInterpreter {
         Self::push(cpu, cpu.reg.get_pc());
         cpu.reg.set_pc((instr.get_y() * 8) as u16);
       }
-      _ => panic!("invalid z")
+      _ => unreachable!()
     }
   }
 
@@ -550,10 +549,10 @@ impl GBInterpreter {
         // set y, r[z]
         let bit = op.get_y();
         let v = Self::get_r(cpu, op.get_z());
-        let mask = (1 << bit);
+        let mask = 1 << bit;
         Self::set_r(cpu, op.get_z(), v | mask);
       }
-      _ => panic!("invalid x")
+      _ => unreachable!()
     }
   }
 }
@@ -570,7 +569,7 @@ impl GBInterpreter {
       5 => cpu.reg.get_l(),
       6 => cpu.mmu.read8(cpu.reg.get_hl()),
       7 => cpu.reg.get_a(),
-      _ => panic!("Invalid value"),
+      _ => unreachable!(),
     }
   }
 
@@ -584,7 +583,7 @@ impl GBInterpreter {
       5 => cpu.reg.set_l(value),
       6 => cpu.mmu.write8(cpu.reg.get_hl(), value),
       7 => cpu.reg.set_a(value),
-      _ => panic!("Invalid value"),
+      _ => unreachable!(),
     }
   }
 
@@ -594,7 +593,7 @@ impl GBInterpreter {
       1 => cpu.reg.get_de(),
       2 => cpu.reg.get_hl(),
       3 => cpu.reg.get_sp(),
-      _ => panic!("Invalid reg"),
+      _ => unreachable!(),
     }
   }
 
@@ -604,7 +603,7 @@ impl GBInterpreter {
       1 => cpu.reg.set_de(value),
       2 => cpu.reg.set_hl(value),
       3 => cpu.reg.set_sp(value),
-      _ => panic!("Invalid reg"),
+      _ => unreachable!(),
     }
   }
 
@@ -614,7 +613,7 @@ impl GBInterpreter {
       1 => cpu.reg.get_de(),
       2 => cpu.reg.get_hl(),
       3 => cpu.reg.get_af(),
-      _ => panic!("Invalid reg"),
+      _ => unreachable!(),
     }
   }
 
@@ -624,7 +623,7 @@ impl GBInterpreter {
       1 => cpu.reg.set_de(value),
       2 => cpu.reg.set_hl(value),
       3 => cpu.reg.set_af(value),
-      _ => panic!("Invalid reg"),
+      _ => unreachable!(),
     }
   }
 
@@ -723,7 +722,7 @@ impl GBInterpreter {
     }
   }
 
-  fn push(cpu: &mut CPU, value: u16) {
+  pub fn push(cpu: &mut CPU, value: u16) {
     cpu.write16(cpu.reg.get_sp().wrapping_sub(2), value);
     cpu.reg.add_sp(-2);
   }
@@ -802,7 +801,7 @@ impl GBInterpreter {
         cpu.reg.set_half_carry_flag(halfv > halfa);
         cpu.reg.set_carry_flag(v > a);
       }
-      _ => panic!("bad alu op")
+      _ => unreachable!()
     }
 
   }
@@ -893,7 +892,7 @@ impl GBInterpreter {
         cpu.reg.set_carry_flag(carry != 0);
         res
       }
-      _ => panic!("bad rot op")
+      _ => unreachable!()
     }
   }
 }

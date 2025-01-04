@@ -33,6 +33,13 @@ bitflags! {
         const _ = !0; // all bits, although all bits are already defined
     }
 }
+enum GBInterrupts {
+  Joypad = 0b00010000,
+  Serial = 0b00001000,
+  Timer = 0b00000100,
+  LCDStat = 0b00000010,
+  VBlank = 0b00000001,
+}
 
 pub struct MMU {
   rom: ROM,
@@ -50,10 +57,12 @@ pub struct MMU {
 
   // other flags
   // TODO: bitflag?
-  pub interrupt_enable: u8,               // interrupt enable register
-  pub interrupts_enabled: bool,           // are interrupts enabled
-  pub model: GBModel,                     // what kind of GB is this
-  pub gbc_mode: bool,                     // are we in gbc mode
+  pub interrupt_enable: u8,     // interrupt enable register
+  pub interrupt_flag: u8,
+  pub interrupts_enabled: bool, // are interrupts enabled
+
+  pub model: GBModel,                 // what kind of GB is this
+  pub gbc_mode: bool,                 // are we in gbc mode
   unused_memory_duplicate_mode: bool, // Weird unused echo memory, TODO: where is this from
   sram_enabled: bool,                 // is sram enabled
   cart_inserted: bool,                // is a cartridge inserted
@@ -69,6 +78,17 @@ pub struct MMU {
   mode2_oam_check_enable: bool,
   mode1_vblank_check_enable: bool,
   mode0_hblank_check_enable: bool,
+
+  // timer state (has to be here because of the interrupt request causing a dep loop)
+  /** total cycles */
+  clock: u64,
+  /** internal timer */
+  counter: u16,
+  tima: u8,
+  tima_edge: bool,
+  tima_overflow: bool,
+  tma: u8,
+  tac: u8,
 }
 
 impl MMU {
@@ -87,7 +107,9 @@ impl MMU {
       oam: [0; OAM::size()],
       // other flags
       interrupt_enable: 0,
+      interrupt_flag: 0,
       interrupts_enabled: false,
+
       model: GBModel::GB,
       gbc_mode: false,
       unused_memory_duplicate_mode: false,
@@ -104,6 +126,14 @@ impl MMU {
       mode2_oam_check_enable: false,
       mode1_vblank_check_enable: false,
       mode0_hblank_check_enable: false,
+      // timer state (has to be here because of the interrupt request)
+      clock: 0,
+      counter: 0xABCC, // todo: set appropriately
+      tima: 0,
+      tima_edge: false,
+      tima_overflow: false,
+      tma: 0,
+      tac: 0,
     }
   }
 
@@ -145,7 +175,8 @@ impl MMU {
       } else {
         1
       };
-      self.wram[bank as usize % self.wram.len()][(addr - WRAMX::start()) as usize % self.wram[0].len()]
+      self.wram[bank as usize % self.wram.len()]
+        [(addr - WRAMX::start()) as usize % self.wram[0].len()]
     } else if ECHO::contains(addr) {
       // Weird unused echo memory
       if self.unused_memory_duplicate_mode {
@@ -160,7 +191,9 @@ impl MMU {
       let off = addr - OAM::start();
       if off as usize >= self.oam.len() {
         0xFF
-      } else if self.lcd_control.contains(LCDControlFlags::POWER) && (self.gpu_mode == GpuMode::ScanOAM || self.gpu_mode == GpuMode::ScanVRAM) {
+      } else if self.lcd_control.contains(LCDControlFlags::POWER)
+        && (self.gpu_mode == GpuMode::ScanOAM || self.gpu_mode == GpuMode::ScanVRAM)
+      {
         0xFF
       } else {
         self.oam[off as usize]
@@ -210,7 +243,8 @@ impl MMU {
       } else {
         1
       };
-      self.wram[bank as usize % self.wram.len()][(addr - WRAMX::start()) as usize % self.wram[0].len()] = value;
+      self.wram[bank as usize % self.wram.len()]
+        [(addr - WRAMX::start()) as usize % self.wram[0].len()] = value;
     } else if ECHO::contains(addr) {
       // Weird mirror unused memory
       if self.unused_memory_duplicate_mode {
@@ -222,7 +256,9 @@ impl MMU {
     } else if OAM::contains(addr) {
       let off = addr - OAM::start();
       if off < self.oam.len() as u16 {
-        if !self.lcd_control.contains(LCDControlFlags::POWER) || (self.gpu_mode != GpuMode::ScanOAM && self.gpu_mode != GpuMode::ScanVRAM) {
+        if !self.lcd_control.contains(LCDControlFlags::POWER)
+          || (self.gpu_mode != GpuMode::ScanOAM && self.gpu_mode != GpuMode::ScanVRAM)
+        {
           self.oam[off as usize] = value;
         }
       }
@@ -252,33 +288,72 @@ impl MMU {
     self.write8(addr + 1, (value >> 8) as u8);
   }
 
+  pub fn request_interrupt(&mut self, interrupt: u8) {
+    self.interrupt_flag |= interrupt & 0x1F;
+  }
+
+  pub fn clear_interrupt(&mut self, interrupt: u8) {
+    self.interrupt_flag &= !(interrupt & 0x1F);
+  }
+
+  pub fn get_requested_and_enabled_interrupts(&self) -> u8 {
+    self.interrupt_flag & self.interrupt_enable
+  }
+
   fn iowrite(&mut self, addr: u16, value: u8) {
     match addr {
-      0xFF01 => { // serial read/write sb
+      0xFF01 => {
+        // serial read/write sb
         print!("{}", value as char);
       }
-      0xFF40 => { // LCD/GPU control
+      0xFF04 => {
+        // DIV
+        self.write_div();
+      }
+      0xFF05 => {
+        // TIMA
+        self.write_tima(value);
+      }
+      0xFF06 => {
+        // TMA
+        self.write_tma(value);
+      }
+      0xFF07 => {
+        // TAC
+        self.write_tac(value);
+      }
+      0xFF0F => {
+        // IF
+        self.interrupt_flag = value & 0x1F;
+      }
+      0xFF40 => {
+        // LCD/GPU control
         self.lcd_control = LCDControlFlags::from_bits_retain(value);
       }
-      0xFF41 => { // LCD Status/STAT
+      0xFF41 => {
+        // LCD Status/STAT
         self.lyc_check_enable = (addr & 0x40) > 0;
         self.mode2_oam_check_enable = (addr & 0x20) > 0;
         self.mode1_vblank_check_enable = (addr & 0x10) > 0;
         self.mode0_hblank_check_enable = (addr & 0x08) > 0;
       }
-      0xFF42 => { // Scroll x
+      0xFF42 => {
+        // Scroll x
         self.scroll_x = value;
       }
-      0xFF43 => { // Scroll Y
+      0xFF43 => {
+        // Scroll Y
         self.scroll_y = value;
       }
-      0xFF45 => { // Scan line compare/LY Compare/LYC
+      0xFF45 => {
+        // Scan line compare/LY Compare/LYC
         self.lyc_compare = value;
       }
       0xFF47 => { // Background palette
-        // TODO: background palette
+         // TODO: background palette
       }
-      0xFF70 => { // wram bank
+      0xFF70 => {
+        // wram bank
         self.wram_bank = value & 0x3;
       }
       0xFF4F => {
@@ -292,10 +367,32 @@ impl MMU {
 
   fn ioread(&self, addr: u16) -> u8 {
     match addr {
-      0xFF40 => { // LCD/GPU control
+      0xFF04 => {
+        // DIV
+        self.get_div()
+      }
+      0xFF05 => {
+        // TIMA
+        self.get_tima()
+      }
+      0xFF06 => {
+        // TMA
+        self.get_tma()
+      }
+      0xFF07 => {
+        // TAC
+        self.get_tac()
+      }
+      0xFF0F => {
+        // IF
+        self.interrupt_flag
+      }
+      0xFF40 => {
+        // LCD/GPU control
         self.lcd_control.bits()
       }
-      0xFF41 => { // LCD status/STAT
+      0xFF41 => {
+        // LCD status/STAT
         let mut res = 0u8;
         if self.lyc_check_enable {
           res |= 1 << 6;
@@ -317,32 +414,108 @@ impl MMU {
         }
         res
       }
-      0xFF42 => { // Scroll x
+      0xFF42 => {
+        // Scroll x
         self.scroll_x
       }
-      0xFF43 => { // Scroll Y
+      0xFF43 => {
+        // Scroll Y
         self.scroll_y
       }
-      0xFF44 => { // Scan line/LY
+      0xFF44 => {
+        // Scan line/LY
         // self.gpu_line
         0x90 // todo: remove this when the gpu is implemented
       }
-      0xFF45 => { // Scan line compare/LY compare/LYC
+      0xFF45 => {
+        // Scan line compare/LY compare/LYC
         self.lyc_compare
       }
-      0xFF47 => { // Background palette
+      0xFF47 => {
+        // Background palette
         // TODO: background palette
         0xFF
       }
-      0xFF70 => {
-        0xF8 | self.wram_bank
-      }
-      0xFF4F => {
-        0xFE | self.vram_bank
-      }
-      _ => {
-        0xFF
-      }
+      0xFF70 => 0xF8 | self.wram_bank,
+      0xFF4F => 0xFE | self.vram_bank,
+      _ => 0xFF,
     }
+  }
+}
+
+// clock
+impl MMU {
+  pub fn get_clock(&self) -> u64 {
+    self.clock
+  }
+
+  pub fn add_clock(&mut self, value: u8) {
+    self.clock = self.clock.wrapping_add(value as u64);
+    self.counter = self.counter.wrapping_add(value as u16);
+
+    self.update_tima();
+  }
+
+  fn update_tima(&mut self) {
+    if self.tima_overflow {
+      self.tima_overflow = false;
+      self.tima = self.tma;
+      self.request_interrupt(GBInterrupts::Timer as u8);
+    }
+
+    let divider = match self.tac & 0b11 {
+      0b00 => 1024,
+      0b01 => 16,
+      0b10 => 64,
+      0b11 => 256,
+      _ => unreachable!(),
+    };
+    let trigger = (self.counter & divider) != 0 && self.tac & 0b100 != 0;
+    // falling edge
+    if trigger != self.tima_edge {
+      // let falling = self.tima_edge && !trigger;
+      self.tima_edge = trigger;
+      // if !trigger {
+        self.tima = self.tima.wrapping_add(1);
+        if self.tima == 0 {
+          // needs to be delayed by one cycle
+          self.tima_overflow = true;
+        }
+      // }
+    }
+  }
+
+  pub fn get_div(&self) -> u8 {
+    (self.counter >> 8) as u8
+  }
+
+  pub fn write_div(&mut self) {
+    self.counter = 0;
+    self.update_tima(); // this can trigger clocks
+  }
+
+  pub fn get_tac(&self) -> u8 {
+    self.tac
+  }
+
+  pub fn write_tac(&mut self, value: u8) {
+    self.tac = value & 0b111;
+    self.update_tima(); // this can trigger clocks
+  }
+
+  pub fn get_tima(&self) -> u8 {
+    self.tima
+  }
+
+  pub fn write_tima(&mut self, value: u8) {
+    self.tima = value;
+  }
+
+  pub fn get_tma(&self) -> u8 {
+    self.tma
+  }
+
+  pub fn write_tma(&mut self, value: u8) {
+    self.tma = value;
   }
 }
