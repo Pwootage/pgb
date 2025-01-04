@@ -66,11 +66,11 @@ impl GBInterpreter {
           }
           4..=7 => {
             // jr cc[y-4], d
-            let addr = cpu
+            let addr = | cpu | cpu
               .reg
               .get_pc()
               .wrapping_add_signed(Self::get_d(cpu) as i16);
-            Self::jump_cc(cpu, addr, instr.get_y() - 4);
+            Self::jump_cc(cpu, instr.get_y() - 4, addr, 1);
           }
           _ => panic!("invalid y"),
         }
@@ -93,7 +93,8 @@ impl GBInterpreter {
           _ => panic!("invalid q"),
         }
       }
-      2 => { // indirect load
+      2 => {
+        // indirect load
         match instr.get_q() {
           0 => {
             match instr.get_p() {
@@ -115,7 +116,7 @@ impl GBInterpreter {
                 cpu.write8(cpu.reg.get_hl(), cpu.reg.get_a());
                 cpu.reg.set_hl(cpu.reg.get_hl().wrapping_sub(1));
               }
-              _ => panic!("invalid p")
+              _ => panic!("invalid p"),
             }
           }
           1 => {
@@ -138,36 +139,215 @@ impl GBInterpreter {
                 cpu.reg.set_a(cpu.read8(cpu.reg.get_hl()));
                 cpu.reg.set_hl(cpu.reg.get_hl().wrapping_sub(1));
               }
-              _ => panic!("invalid p")
+              _ => panic!("invalid p"),
             }
           }
-          _ => panic!("invalid q")
+          _ => panic!("invalid q"),
         }
       }
-      3 => { // 16 bit increment/decrement
+      3 => {
+        // 16 bit increment/decrement
+        match instr.get_q() {
+          0 => {
+            // inc rp[p]
+            let r = Self::get_rp(cpu, instr.get_p());
+            Self::set_rp(cpu, instr.get_p(), r.wrapping_add(1));
+            cpu.add_clock(4);
+          }
+          1 => {
+            // dec rp[p]
+            let r = Self::get_rp(cpu, instr.get_p());
+            Self::set_rp(cpu, instr.get_p(), r.wrapping_sub(1));
+            cpu.add_clock(4);
+          }
+          _ => panic!("invalid q"),
+        }
       }
       4 => { // 8 bit increment
+        // inc r[y]
+        let r = Self::get_r(cpu, instr.get_y());
+        let res = r.wrapping_add(1);
+        let half_res = (r & 0x0F).wrapping_add(1);
+        Self::set_r(cpu, instr.get_y(), res);
+        cpu.reg.set_zero_flag(res == 0);
+        cpu.reg.set_subtract_flag(false);
+        // TODO: verify this; it was checking > 0xF0 before, which seems wrong
+        cpu.reg.set_half_carry_flag(half_res > 0xF);
       }
       5 => { // 8 bit decrement
+        // dec r[y]
+        let r = Self::get_r(cpu, instr.get_y());
+        let res = r.wrapping_sub(1);
+        let half_res = (r & 0x0F).wrapping_sub(1);
+        Self::set_r(cpu, instr.get_y(), res);
+        cpu.reg.set_zero_flag(res == 0);
+        cpu.reg.set_subtract_flag(false);
+        // TODO: verify this; it was checking > 0xF0 before, which seems wrong
+        cpu.reg.set_half_carry_flag(half_res > 0xF);
       }
       6 => { // 8 bit load immediate
+        // ld r[y], n
+        Self::set_r(cpu, instr.get_y(), Self::get_n(cpu));
       }
       7 => { // misc flag stuff
+        todo!("uhoh, need to do flags")
       }
       _ => panic!("invalid z"),
     }
   }
 
   fn interpret_block1(cpu: &mut CPU, instr: GBInstruction) {
-    todo!()
+    // ld r[y], r[z]
+    let y = instr.get_y();
+    let z = instr.get_z();
+    if y == 6 && z == 6 {
+      todo!("HALT IN THE NAME OF LOVE")
+    }
+    let v = Self::get_r(cpu, z);
+    Self::set_r(cpu, y, v);
   }
 
   fn interpret_block2(cpu: &mut CPU, instr: GBInstruction) {
-    todo!()
+    // alu reg reg
+    let value = Self::get_r(cpu, instr.get_z());
+    Self::alu(cpu, instr.get_y(), value);
   }
 
   fn interpret_block3(cpu: &mut CPU, instr: GBInstruction) {
-    todo!()
+    match instr.get_z() {
+      0 => {
+        // conditional return, mem mapped register, stack
+        match instr.get_y() {
+          0..=3 => {
+            // ret cc[y]
+            Self::ret_cc(cpu, instr.get_y());
+          }
+          4 => {
+            // ldh n, a
+            // ld (0xFF00 + n), a
+            let off = Self::get_n(cpu) as u16;
+            cpu.write8(0xFF00 | off, cpu.reg.get_a());
+          }
+          5 => {
+            // add sp, d
+            let off = Self::get_d(cpu) as i16;
+            let sp = cpu.reg.get_sp();
+            let (add, overflow) = sp.overflowing_add_signed(off);
+            let half_add = (sp & 0xFF) + (off & 0xFF) as u16;
+            cpu.reg.set_zero_flag(false);
+            cpu.reg.set_subtract_flag(false);
+            cpu.reg.set_half_carry_flag(half_add > 0xFF);
+            cpu.reg.set_carry_flag(overflow);
+            cpu.reg.set_sp(add);
+          }
+          6 => {
+            // ld a, (0xFF00 + n)
+            let off = Self::get_n(cpu) as u16;
+            let v = cpu.read8(0xFF00 | off);
+            cpu.reg.set_a(v);
+          }
+          7 => {
+            // ld hl, sp + d
+            let off = Self::get_d(cpu) as i16;
+            let sp = cpu.reg.get_sp();
+            let (add, overflow) = sp.overflowing_add_signed(off);
+            let half_add = (sp & 0xFF) + (off & 0xFF) as u16;
+            cpu.reg.set_zero_flag(false);
+            cpu.reg.set_subtract_flag(false);
+            cpu.reg.set_half_carry_flag(half_add > 0xFF);
+            cpu.reg.set_carry_flag(overflow);
+            cpu.reg.set_hl(add);
+          }
+          _ => panic!("invalid y")
+        }
+      }
+      1 => {
+        // pop/ret/etc
+        match instr.get_q() {
+          0 => {
+            // pop rp2[p]
+            let v = cpu.read16(cpu.reg.get_sp());
+            Self::set_rp2(cpu, instr.get_p(), v);
+            cpu.reg.add_sp(2);
+          }
+          1 => {
+            match instr.get_p() {
+              0 => {
+                // ret
+                Self::ret(cpu);
+              }
+              1 => {
+                // reti
+                Self::ret(cpu);
+                cpu.enable_interrupts();
+              }
+              2 => {
+                // jp hl
+                // TODO: check if this takes an extra clock cycle or not!
+                Self::jump(cpu, cpu.reg.get_hl());
+              }
+              3 => {
+                // ld sp, hl
+                cpu.reg.set_sp(cpu.reg.get_hl());
+                cpu.add_clock(4);
+              }
+              _ => panic!("invalid p")
+            }
+          }
+          _ => panic!("invalid q")
+        }
+      }
+      2 => {
+        // conditional jumps, hi c
+        match instr.get_y() {
+          0..=3 => {
+            // jp cc[y], nn
+            let addr = | cpu | cpu
+              .reg
+              .get_pc()
+              .wrapping_add_signed(Self::get_nn(cpu) as i16);
+            Self::jump_cc(cpu, instr.get_y(), addr, 2);
+          }
+          4 => {
+            // ld (0xFF00+c), a
+            let off = cpu.reg.get_c() as u16;
+            cpu.write8(0xFF00 | off, cpu.reg.get_a());
+          }
+          5 => {
+            // ld (nn), a
+            let off = Self::get_nn(cpu);
+            cpu.write8(off, cpu.reg.get_a());
+          }
+          6 => {
+            // ld a, (0xFF00+c)
+            let off = cpu.reg.get_c() as u16;
+            cpu.reg.set_a(cpu.read8(0xFF00 | off));
+          }
+          7 => {
+            // ld a, (nn)
+            let off = Self::get_nn(cpu);
+            cpu.reg.set_a(cpu.read8(off));
+          }
+          _ => panic!("invalid y")
+        }
+      }
+      3 => {
+        // interrupts, jumps, cb prefix
+      }
+      4 => {
+        // conditional call
+      }
+      5 => {
+      // push, unconditional call
+      }
+      6 => {
+        // alu reg imm
+      }
+      7 => {
+        // rst
+      }
+      _ => panic!("invalid z")
+    }
   }
 }
 
@@ -261,15 +441,119 @@ impl GBInterpreter {
     cpu.add_clock(4);
   }
 
-  fn jump_cc(cpu: &mut CPU, addr: u16, cc: u8) {
+  fn jump_cc(cpu: &mut CPU, cc: u8, addr: fn(&mut CPU) -> u16, skip_on_false: u16) {
     match cc {
-      0 if !cpu.reg.get_zero_flag() => Self::jump(cpu, addr),
-      1 if cpu.reg.get_zero_flag() => Self::jump(cpu, addr),
-      2 if !cpu.reg.get_carry_flag() => Self::jump(cpu, addr),
-      3 if cpu.reg.get_zero_flag() => Self::jump(cpu, addr),
+      0 if !cpu.reg.get_zero_flag() => Self::jump(cpu, addr(cpu)),
+      1 if cpu.reg.get_zero_flag() => Self::jump(cpu, addr(cpu)),
+      2 if !cpu.reg.get_carry_flag() => Self::jump(cpu, addr(cpu)),
+      3 if cpu.reg.get_zero_flag() => Self::jump(cpu, addr(cpu)),
+      _ => {
+        // don't jump
+        Self::jump(cpu, cpu.reg.get_pc().wrapping_add(skip_on_false))
+      }
+    }
+  }
+
+  fn ret(cpu: &mut CPU) {
+    let addr = cpu.read16(cpu.reg.get_sp());
+    cpu.reg.add_sp(2);
+    Self::jump(cpu, addr);
+  }
+
+  fn ret_cc(cpu: &mut CPU,cc: u8) {
+    cpu.add_clock(4);
+    match cc {
+      0 if !cpu.reg.get_zero_flag() => Self::ret(cpu),
+      1 if cpu.reg.get_zero_flag() => Self::ret(cpu),
+      2 if !cpu.reg.get_carry_flag() => Self::ret(cpu),
+      3 if cpu.reg.get_zero_flag() => Self::ret(cpu),
       _ => {
         // don't jump
       }
     }
+  }
+
+  fn alu(cpu: &mut CPU, op: u8, value: u8) {
+    let a = cpu.reg.get_a();
+    let v = value;
+    match op {
+      0 | 1 => {
+        // 0: add a,
+        // 1: adc a,
+        // 2: sub
+        // 2: sub a,
+        // 3: sbc a,
+        let c: u8 = match op {
+          1 if cpu.reg.get_carry_flag() => 1,
+          _ => 0,
+        };
+        let sum = a + v + c;
+        let half_sum = (a & 0xF) + (v & 0xF) + c;
+        cpu.reg.set_zero_flag(sum == 0);
+        cpu.reg.set_subtract_flag(false);
+        cpu.reg.set_half_carry_flag(half_sum > 0xF);
+        cpu.reg.set_carry_flag(sum < a - c); // TODO: verify this
+        cpu.reg.set_a(sum);
+      }
+      2 | 3 => {
+        // 2: sub
+        // 2: sub a,
+        // 3: sbc a,
+        let c: u8 = match op {
+          3 if cpu.reg.get_carry_flag() => 1,
+          _ => 0,
+        };
+        let diff = a as u16.wrapping_sub(v as u16).wrapping_sub(c as u16);
+        let halfa = a & 0xF;
+        let halfv = v * 0xF;
+        cpu.reg.set_zero_flag(diff == 0);
+        cpu.reg.set_subtract_flag(true);
+        cpu.reg.set_half_carry_flag(halfv > halfa + c);
+        cpu.reg.set_carry_flag(v > a + c);
+        cpu.reg.set_a(diff as u8);
+      }
+      4 => {
+        // and
+        // and a,
+        let res = a & v;
+        cpu.reg.set_zero_flag(res == 0);
+        cpu.reg.set_subtract_flag(false);
+        cpu.reg.set_half_carry_flag(true);
+        cpu.reg.set_carry_flag(false);
+        cpu.reg.set_a(res);
+      }
+      5 => {
+        // xor
+        // xor a,
+        let res = a ^ v;
+        cpu.reg.set_zero_flag(res == 0);
+        cpu.reg.set_subtract_flag(false);
+        cpu.reg.set_half_carry_flag(false);
+        cpu.reg.set_carry_flag(false);
+        cpu.reg.set_a(res);
+      }
+      6 => {
+        // or
+        // or a,
+        let res = a | v;
+        cpu.reg.set_zero_flag(res == 0);
+        cpu.reg.set_subtract_flag(false);
+        cpu.reg.set_half_carry_flag(false);
+        cpu.reg.set_carry_flag(false);
+        cpu.reg.set_a(res);
+      }
+      7 => {
+        // cp
+        // cp a,
+        let halfa = a & 0xF;
+        let halfv = v * 0xF;
+        cpu.reg.set_zero_flag(a == v);
+        cpu.reg.set_subtract_flag(true);
+        cpu.reg.set_half_carry_flag(halfv > halfa);
+        cpu.reg.set_carry_flag(v > a);
+      }
+      _ => panic!("bad alu op")
+    }
+
   }
 }

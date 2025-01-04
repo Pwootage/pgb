@@ -16,7 +16,6 @@ pub struct GBRegisters {
   pc: u16,
 }
 
-
 impl GBRegisters {
   // some verificaiton of aligns for optimization reasons
   const_assert!(offset_of!(GBRegisters, a) == 0);
@@ -167,6 +166,10 @@ impl GBRegisters {
 
   pub fn set_sp(&mut self, value: u16) {
     self.sp = value;
+  }
+
+  pub fn add_sp(&mut self, v: i16) {
+    self.sp = self.sp.wrapping_add_signed(v);
   }
 
   pub fn get_pc(&self) -> u16 {
