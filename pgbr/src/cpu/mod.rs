@@ -1,5 +1,6 @@
 mod initparams;
 mod registers;
+mod interpreter;
 
 use crate::cpu::initparams::{
   GBA_INIT, GBA_INIT_GBC, GBC_INIT, GBC_INIT_GBC, GBP_INIT, GB_INIT, SGB2_INIT, SGB_INIT,
